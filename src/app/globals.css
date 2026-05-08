@@ -111,3 +111,13 @@
     @apply font-sans;
   }
 }
+
+:root {
+  --clerk-color-primary: var(--accent-primary);
+  --clerk-color-background: var(--bg-surface);
+  --clerk-color-text: var(--text-primary);
+  --clerk-color-neutral: var(--text-secondary);
+  --clerk-color-danger: var(--state-error);
+  --clerk-color-success: var(--state-success);
+  --clerk-border-radius: var(--radius);
+}
