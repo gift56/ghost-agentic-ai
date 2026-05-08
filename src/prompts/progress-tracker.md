@@ -3,43 +3,38 @@
 Update this file whenever the current phase, active feature, or implementation state changes.
 
 ## Current Phase
-
-- Feature 02: TBD
+- Feature 02 (Editor Chrome) — complete
 
 ## Current Goal
-
-- Begin next feature unit implementation after design-system foundation.
+- Feature 03 (TBD)
 
 ## Completed
 
-- Total completed feature units: 1
-- `01-design-system` completed.
-- Installed and configured `shadcn/ui` with project `components.json`.
-- Added UI primitives: `Button`, `Card`, `Dialog`, `Input`, `Tabs`, `Textarea`, `ScrollArea`.
-- Installed `lucide-react`.
-- Added `src/lib/utils.ts` with reusable `cn()` helper.
-- Aligned global theme tokens to dark-only usage (no light default styling).
+- Feature 01: Design System — shadcn/ui installed and configured, dark-only theme tokens set in `globals.css`, `Button`/`Card`/`Dialog`/`Input`/`Tabs`/`Textarea`/`ScrollArea` added in `components/ui`, `lucide-react` installed, `src/lib/utils.ts` `cn()` helper added. TypeScript compiles clean.
+- Feature 02: Editor Chrome — `EditorNavbar` (fixed top bar with `PanelLeftOpen`/`PanelLeftClose` toggle) and `ProjectSidebar` (fixed overlay, left slide-in, `Projects` title + close button, `My Projects`/`Shared` tabs with empty states, full-width `New Project` button) added in `components/editor/`. Dialog pattern prepared via `EditorDialogShell` using existing global tokens. TypeScript and ESLint clean.
 
 ## In Progress
 
-- None yet.
+- None.
 
 ## Next Up
 
-- Define and begin `Feature 02` scope (TBD), then implement the next approved feature unit.
+- TBD
 
 ## Open Questions
 
-- Add unresolved product or implementation questions here.
+- None yet.
 
 ## Architecture Decisions
 
-- Adopt `shadcn/ui` as the base UI primitive library; generated primitives remain unmodified in `src/components/ui/*`.
-- Use `components.json` as the single source of truth for shadcn configuration and future component generation.
-- Standardize class composition through `src/lib/utils.ts` `cn()` (`clsx` + `tailwind-merge`) for consistent Tailwind class merging.
-- Enforce dark-only theming in `src/app/globals.css` by removing light defaults and mapping tokens to existing dark workspace variables.
-- Standardize iconography on `lucide-react` for consistent stroke-based icons across UI surfaces.
+- shadcn/ui over Tailwind v4 (CSS-based token config via `@theme inline` in `globals.css`, no `tailwind.config.js`).
+- Dark-only theme: all shadcn `:root` variables are mapped to dark workspace values directly.
+- Do not modify generated `components/ui/*` files after shadcn installation.
+- Use fixed overlay sidebar behavior for editor navigation so canvas layout is not pushed on open/close.
+- Standardize future editor dialogs with `EditorDialogShell` and existing global design tokens.
 
 ## Session Notes
 
-- Add context needed to resume work in the next session.
+- Using Next.js `16.2.4` with React `19` and Tailwind CSS `v4`.
+- `lucide-react` is installed for iconography.
+- Editor chrome primitives now live in `src/components/editor/`: `editor-navbar.tsx`, `project-sidebar.tsx`, `editor-dialog-shell.tsx`.
