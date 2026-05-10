@@ -2,7 +2,10 @@
 
 import { ClerkLoaded, ClerkLoading, UserButton } from "@clerk/nextjs";
 import {
+  AlertCircle,
+  Check,
   LayoutTemplate,
+  Loader2,
   PanelLeftClose,
   PanelLeftOpen,
   Share2,
@@ -11,16 +14,23 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { CanvasAutosaveStatus } from "@/hooks/use-canvas-autosave";
 
 type EditorNavbarProps = {
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   projectName?: string;
   showWorkspaceActions?: boolean;
+  /** When true, the navbar omits the Clerk UserButton (shown in the canvas instead). */
+  hideUserButton?: boolean;
   isAiSidebarOpen?: boolean;
   onToggleAiSidebar?: () => void;
   onShareClick?: () => void;
   onOpenStarterTemplates?: () => void;
+  canvasSave?: {
+    status: CanvasAutosaveStatus;
+    onManualSave: () => void;
+  };
 };
 
 export function EditorNavbar({
@@ -28,10 +38,12 @@ export function EditorNavbar({
   onToggleSidebar,
   projectName,
   showWorkspaceActions = false,
+  hideUserButton = false,
   isAiSidebarOpen = false,
   onToggleAiSidebar,
   onShareClick,
   onOpenStarterTemplates,
+  canvasSave,
 }: EditorNavbarProps) {
   return (
     <header className="flex h-14 items-center border-b border-border bg-(--bg-surface) px-4">
@@ -69,6 +81,42 @@ export function EditorNavbar({
                 Templates
               </Button>
             ) : null}
+            {canvasSave ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-icon="inline-start py-2! px-4!"
+                onClick={canvasSave.onManualSave}
+                disabled={canvasSave.status === "saving"}
+                aria-label={
+                  canvasSave.status === "saving"
+                    ? "Saving canvas"
+                    : canvasSave.status === "saved"
+                      ? "Canvas saved"
+                      : canvasSave.status === "error"
+                        ? "Canvas save failed"
+                        : "Save canvas"
+                }
+              >
+                {canvasSave.status === "saving" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : null}
+                {canvasSave.status === "saved" ? (
+                  <Check className="size-4 text-emerald-400" />
+                ) : null}
+                {canvasSave.status === "error" ? (
+                  <AlertCircle className="size-4 text-red-400" />
+                ) : null}
+                {canvasSave.status === "saving"
+                  ? "Saving…"
+                  : canvasSave.status === "saved"
+                    ? "Saved"
+                    : canvasSave.status === "error"
+                      ? "Save failed"
+                      : "Save"}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -95,12 +143,16 @@ export function EditorNavbar({
             </Button>
           </>
         ) : null}
-        <ClerkLoading>
-          <Skeleton className="h-7 w-7 rounded-full" />
-        </ClerkLoading>
-        <ClerkLoaded>
-          <UserButton />
-        </ClerkLoaded>
+        {hideUserButton ? null : (
+          <>
+            <ClerkLoading>
+              <Skeleton className="h-7 w-7 rounded-full" />
+            </ClerkLoading>
+            <ClerkLoaded>
+              <UserButton />
+            </ClerkLoaded>
+          </>
+        )}
       </div>
     </header>
   );

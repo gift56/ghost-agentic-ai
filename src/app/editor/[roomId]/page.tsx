@@ -40,6 +40,9 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
     <EditorWorkspaceClient
       roomId={roomId}
       projectName={project.name}
+      savedCanvasBlobUrl={
+        project.canvasJsonPath.trim() ? project.canvasJsonPath : null
+      }
       ownedProjects={ownedProjects}
       sharedProjects={sharedProjects}
       isOwner={project.isOwner}

@@ -2,12 +2,15 @@
 
 import {
   useCallback,
+  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type DragEvent,
   type MouseEvent,
 } from "react";
+import { useUpdateMyPresence } from "@liveblocks/react/suspense";
 import {
   Background,
   BackgroundVariant,
@@ -18,7 +21,7 @@ import {
   ReactFlow,
   type ReactFlowInstance,
 } from "@xyflow/react";
-import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow";
+import { useLiveblocksFlow } from "@liveblocks/react-flow";
 import {
   useCanRedo,
   useCanUndo,
@@ -27,6 +30,8 @@ import {
 } from "@liveblocks/react/suspense";
 
 import { EditorCanvasControlBar } from "@/components/editor/editor-canvas-control-bar";
+import { EditorCanvasLiveCursors } from "@/components/editor/editor-canvas-live-cursors";
+import { EditorCanvasPresenceAvatars } from "@/components/editor/editor-canvas-presence-avatars";
 import {
   CANVAS_TEMPLATES,
   getStarterTemplateImportChanges,
@@ -45,7 +50,12 @@ import {
   CANVAS_SHAPE_DRAG_MIME,
   parseCanvasShapeDragPayload,
 } from "@/lib/canvas-shape-defs";
+import {
+  useCanvasAutosave,
+  type CanvasAutosaveStatus,
+} from "@/hooks/use-canvas-autosave";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { getCanvasSnapshotImportChanges } from "@/lib/canvas-snapshot-import";
 import {
   canvasEdge,
   canvasNode,
@@ -60,11 +70,19 @@ const FIT_VIEW_ANIM_MS = 200;
 type EditorWorkspaceCanvasFlowProps = {
   starterTemplatesOpen: boolean;
   onStarterTemplatesOpenChange: (open: boolean) => void;
+  projectId: string;
+  savedCanvasBlobUrl: string | null;
+  onSaveStatusChange?: (status: CanvasAutosaveStatus) => void;
+  onAutosaveFlushReady?: (flush: () => Promise<void>) => void;
 };
 
 function EditorWorkspaceCanvasFlowInner({
   starterTemplatesOpen,
   onStarterTemplatesOpenChange,
+  projectId,
+  savedCanvasBlobUrl,
+  onSaveStatusChange,
+  onAutosaveFlushReady,
 }: EditorWorkspaceCanvasFlowProps) {
   const reactFlowRef = useRef<ReactFlowInstance<CanvasNode, CanvasEdge> | null>(
     null,
@@ -72,6 +90,9 @@ function EditorWorkspaceCanvasFlowInner({
   const dropCounterRef = useRef(0);
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+  const [canvasHydrated, setCanvasHydrated] = useState(false);
+  const nodeCountRef = useRef(0);
+  const edgeCountRef = useRef(0);
 
   const edgeUiValue = useMemo(
     () => ({
@@ -124,10 +145,157 @@ function EditorWorkspaceCanvasFlowInner({
       edges: { initial: [] },
     });
 
+  const onNodesChangeRef = useRef(onNodesChange);
+  const onEdgesChangeRef = useRef(onEdgesChange);
+
+  useLayoutEffect(() => {
+    onNodesChangeRef.current = onNodesChange;
+    onEdgesChangeRef.current = onEdgesChange;
+    nodeCountRef.current = nodes.length;
+    edgeCountRef.current = edges.length;
+  });
+
+  const { status: autosaveStatus, flush: flushAutosave } = useCanvasAutosave({
+    projectId,
+    nodes,
+    edges,
+    enabled: canvasHydrated,
+  });
+
+  useEffect(() => {
+    onSaveStatusChange?.(autosaveStatus);
+  }, [autosaveStatus, onSaveStatusChange]);
+
+  useEffect(() => {
+    onAutosaveFlushReady?.(flushAutosave);
+  }, [flushAutosave, onAutosaveFlushReady]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const finishHydration = () => {
+      if (!cancelled) {
+        setCanvasHydrated(true);
+      }
+    };
+
+    if (nodeCountRef.current > 0 || edgeCountRef.current > 0) {
+      finishHydration();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const url = savedCanvasBlobUrl?.trim();
+    if (!url) {
+      finishHydration();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/canvas`, {
+          credentials: "same-origin",
+        });
+        if (cancelled) return;
+
+        if (nodeCountRef.current > 0 || edgeCountRef.current > 0) {
+          finishHydration();
+          return;
+        }
+
+        if (!res.ok) {
+          finishHydration();
+          return;
+        }
+
+        const data = (await res.json()) as {
+          canvas: { nodes: CanvasNode[]; edges: CanvasEdge[] } | null;
+        };
+
+        if (
+          !data.canvas ||
+          !Array.isArray(data.canvas.nodes) ||
+          !Array.isArray(data.canvas.edges)
+        ) {
+          finishHydration();
+          return;
+        }
+
+        if (nodeCountRef.current > 0 || edgeCountRef.current > 0) {
+          finishHydration();
+          return;
+        }
+
+        const {
+          clearEdgeChanges,
+          clearNodeChanges,
+          snapshotNodeChanges,
+          snapshotEdgeChanges,
+        } = getCanvasSnapshotImportChanges(data.canvas, [], []);
+
+        setEditingEdgeId(null);
+        setHoveredEdgeId(null);
+
+        if (clearEdgeChanges.length) {
+          onEdgesChangeRef.current(clearEdgeChanges);
+        }
+        if (clearNodeChanges.length) {
+          onNodesChangeRef.current(clearNodeChanges);
+        }
+        if (snapshotNodeChanges.length) {
+          onNodesChangeRef.current(snapshotNodeChanges);
+        }
+        if (snapshotEdgeChanges.length) {
+          onEdgesChangeRef.current(snapshotEdgeChanges);
+        }
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            reactFlowRef.current?.fitView({
+              padding: 0.2,
+              duration: FIT_VIEW_ANIM_MS,
+            });
+          });
+        });
+      } catch {
+        // Leave empty canvas; user can still edit.
+      } finally {
+        finishHydration();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, savedCanvasBlobUrl]);
+
   const undo = useUndo();
   const redo = useRedo();
   const canUndo = useCanUndo();
   const canRedo = useCanRedo();
+
+  const updateMyPresence = useUpdateMyPresence();
+
+  const onPaneMouseMove = useCallback(
+    (event: MouseEvent) => {
+      const rf = reactFlowRef.current;
+      if (!rf) return;
+      updateMyPresence({
+        cursor: rf.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        }),
+      });
+    },
+    [updateMyPresence],
+  );
+
+  const onPaneMouseLeave = useCallback(() => {
+    updateMyPresence({ cursor: null });
+  }, [updateMyPresence]);
 
   useKeyboardShortcuts<CanvasNode, CanvasEdge>({
     reactFlowRef,
@@ -264,6 +432,8 @@ function EditorWorkspaceCanvasFlowInner({
               onEdgeDoubleClick={onEdgeDoubleClick}
               onEdgeMouseEnter={onEdgeMouseEnter}
               onEdgeMouseLeave={onEdgeMouseLeave}
+              onPaneMouseMove={onPaneMouseMove}
+              onPaneMouseLeave={onPaneMouseLeave}
               fitView
               fitViewOptions={{ padding: 0.2 }}
               minZoom={0.25}
@@ -275,7 +445,13 @@ function EditorWorkspaceCanvasFlowInner({
                 size={1}
                 color="rgb(63 63 70 / 0.45)"
               />
-              <Cursors />
+              <EditorCanvasLiveCursors />
+              <Panel
+                position="top-right"
+                className="z-10 m-0 mr-4! mt-4! p-0"
+              >
+                <EditorCanvasPresenceAvatars />
+              </Panel>
               <Panel
                 position="bottom-left"
                 className="m-0 mb-4! ml-4! p-0"

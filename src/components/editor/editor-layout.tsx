@@ -4,10 +4,12 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 
 import { EditorNavbar } from "@/components/editor/editor-navbar";
+import type { CanvasAutosaveStatus } from "@/hooks/use-canvas-autosave";
 import {
   type SidebarProject,
   ProjectSidebar,
 } from "@/components/editor/project-sidebar";
+import { EditorAiSidebar } from "@/components/editor/editor-ai-sidebar";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 type EditorLayoutProps = {
@@ -22,6 +24,10 @@ type EditorLayoutProps = {
   onDeleteProject: (project: SidebarProject) => void;
   onShareProject?: () => void;
   onOpenStarterTemplates?: () => void;
+  canvasSave?: {
+    status: CanvasAutosaveStatus;
+    onManualSave: () => void;
+  };
 };
 
 export function EditorLayout({
@@ -36,6 +42,7 @@ export function EditorLayout({
   onDeleteProject,
   onShareProject,
   onOpenStarterTemplates,
+  canvasSave,
 }: EditorLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
@@ -47,10 +54,12 @@ export function EditorLayout({
         onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
         projectName={projectName}
         showWorkspaceActions={showWorkspaceActions}
+        hideUserButton={showWorkspaceActions}
         isAiSidebarOpen={isAiSidebarOpen}
         onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
         onShareClick={onShareProject}
         onOpenStarterTemplates={onOpenStarterTemplates}
+        canvasSave={canvasSave}
       />
       {isSidebarOpen ? (
         <button
@@ -77,11 +86,9 @@ export function EditorLayout({
         <Dialog open={isAiSidebarOpen} onOpenChange={setIsAiSidebarOpen}>
           <DialogContent
             showCloseButton={false}
-            className="top-0 right-0 left-auto h-dvh w-full max-w-sm translate-x-0 translate-y-0 rounded-none border-l border-border bg-(--bg-elevated) p-0 duration-200 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-right data-open:zoom-in-100 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-right data-closed:zoom-out-100"
+            className="top-0 right-0 left-auto h-dvh w-full max-w-sm translate-x-0 translate-y-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 duration-200 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-right data-open:zoom-in-100 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-right data-closed:zoom-out-100"
           >
-            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              AI sidebar placeholder
-            </div>
+            <EditorAiSidebar onClose={() => setIsAiSidebarOpen(false)} />
           </DialogContent>
         </Dialog>
       ) : null}

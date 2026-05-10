@@ -11,6 +11,8 @@ export type AccessibleProject = {
   id: string;
   name: string;
   isOwner: boolean;
+  /** Vercel Blob URL for persisted canvas JSON; empty string when never saved. */
+  canvasJsonPath: string;
 };
 
 export async function getCurrentProjectIdentity(): Promise<ProjectIdentity | null> {
@@ -53,6 +55,7 @@ export async function getAccessibleProjectByRoomId(
       id: true,
       name: true,
       ownerId: true,
+      canvasJsonPath: true,
     },
   });
 
@@ -64,5 +67,6 @@ export async function getAccessibleProjectByRoomId(
     id: project.id,
     name: project.name,
     isOwner: project.ownerId === identity.userId,
+    canvasJsonPath: project.canvasJsonPath,
   };
 }

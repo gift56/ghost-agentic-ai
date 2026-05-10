@@ -1,6 +1,7 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
+import "@liveblocks/react-ui/styles.css";
 import "@liveblocks/react-flow/styles.css";
 
 import { LiveMap, LiveObject } from "@liveblocks/client";
@@ -9,14 +10,28 @@ import {
   LiveblocksProvider,
   RoomProvider,
 } from "@liveblocks/react/suspense";
+import { useCallback } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 
 import { EditorWorkspaceCanvasFlow } from "@/components/editor/editor-workspace-canvas-flow";
+import type { CanvasAutosaveStatus } from "@/hooks/use-canvas-autosave";
+import { userIdToCursorColor } from "@/lib/cursor-color";
+
+function fallbackResolvedUsers(userIds: string[]) {
+  return userIds.map((id) => ({
+    name: "Collaborator",
+    avatar: "",
+    color: userIdToCursorColor(id),
+  }));
+}
 
 type EditorWorkspaceCanvasProps = {
   roomId: string;
+  savedCanvasBlobUrl: string | null;
   starterTemplatesOpen: boolean;
   onStarterTemplatesOpenChange: (open: boolean) => void;
+  onSaveStatusChange?: (status: CanvasAutosaveStatus) => void;
+  onAutosaveFlushReady?: (flush: () => Promise<void>) => void;
 };
 
 function EditorWorkspaceCanvasLoading() {
@@ -43,14 +58,54 @@ function EditorWorkspaceCanvasError() {
 
 export function EditorWorkspaceCanvas({
   roomId,
+  savedCanvasBlobUrl,
   starterTemplatesOpen,
   onStarterTemplatesOpenChange,
+  onSaveStatusChange,
+  onAutosaveFlushReady,
 }: EditorWorkspaceCanvasProps) {
+  const resolveUsers = useCallback(
+    async ({ userIds }: { userIds: string[] }) => {
+      if (userIds.length === 0) {
+        return [];
+      }
+
+      try {
+        const res = await fetch("/api/liveblocks-resolve-users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userIds }),
+          credentials: "same-origin",
+        });
+
+        if (!res.ok) {
+          return fallbackResolvedUsers(userIds);
+        }
+
+        const data = (await res.json()) as {
+          users: Array<{ name: string; avatar: string; color: string }>;
+        };
+
+        if (!Array.isArray(data.users) || data.users.length !== userIds.length) {
+          return fallbackResolvedUsers(userIds);
+        }
+
+        return data.users;
+      } catch {
+        return fallbackResolvedUsers(userIds);
+      }
+    },
+    [],
+  );
+
   return (
-    <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
+    <LiveblocksProvider
+      authEndpoint="/api/liveblocks-auth"
+      resolveUsers={resolveUsers}
+    >
       <RoomProvider
         id={roomId}
-        initialPresence={{ cursor: null, isThinking: false }}
+        initialPresence={{ cursor: null, thinking: false }}
         initialStorage={() => ({
           flow: new LiveObject({
             nodes: new LiveMap(),
@@ -61,8 +116,12 @@ export function EditorWorkspaceCanvas({
         <ErrorBoundary fallback={<EditorWorkspaceCanvasError />}>
           <ClientSideSuspense fallback={<EditorWorkspaceCanvasLoading />}>
             <EditorWorkspaceCanvasFlow
+              projectId={roomId}
+              savedCanvasBlobUrl={savedCanvasBlobUrl}
               starterTemplatesOpen={starterTemplatesOpen}
               onStarterTemplatesOpenChange={onStarterTemplatesOpenChange}
+              onSaveStatusChange={onSaveStatusChange}
+              onAutosaveFlushReady={onAutosaveFlushReady}
             />
           </ClientSideSuspense>
         </ErrorBoundary>
