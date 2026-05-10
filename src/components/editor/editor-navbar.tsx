@@ -46,7 +46,7 @@ export function EditorNavbar({
   canvasSave,
 }: EditorNavbarProps) {
   return (
-    <header className="flex h-14 items-center border-b border-border bg-(--bg-surface) px-4">
+    <header className="flex h-14 items-center border-b border-border bg-surface px-4">
       <div className="flex flex-1 items-center gap-3">
         <Button
           variant="ghost"

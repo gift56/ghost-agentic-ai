@@ -79,7 +79,7 @@ export function EditorAiSidebar({ onClose }: EditorAiSidebarProps) {
             <TabsTrigger
               value="architect"
               className={cn(
-                "h-auto min-h-8 min-w-0 flex-1 rounded-md px-2 py-1 text-center text-sm font-medium text-muted-text !after:hidden",
+                "h-auto min-h-6 min-w-0 flex-1 rounded-full px-2 py-0.5 text-center text-sm font-medium text-muted-text !after:hidden",
                 "wrap-break-word whitespace-normal shadow-none data-active:shadow-none!",
                 "focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0",
                 "hover:text-primary-text",
@@ -93,7 +93,7 @@ export function EditorAiSidebar({ onClose }: EditorAiSidebarProps) {
             <TabsTrigger
               value="specs"
               className={cn(
-                "h-auto min-h-8 min-w-0 flex-1 rounded-md px-2 py-1 text-center text-sm font-medium text-muted-text !after:hidden",
+                "h-auto min-h-6 min-w-0 flex-1 rounded-full px-2 py-0.5 text-center text-sm font-medium text-muted-text !after:hidden",
                 "whitespace-normal shadow-none data-active:shadow-none!",
                 "focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0",
                 "hover:text-primary-text",
