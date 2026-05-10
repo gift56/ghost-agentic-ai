@@ -3,10 +3,10 @@
 Update this file whenever the current phase, active feature, or implementation state changes.
 
 ## Current Phase
-- Feature 12 (Shape panel) - completed
+- Feature 13 (Node shape) - completed
 
 ## Current Goal
-- Feature 13 (TBD)
+- Feature 14 (Node editing)
 
 ## Completed
 
@@ -22,6 +22,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - Feature 10: Liveblocks setup - root `liveblocks.config.ts` defines `Presence` (cursor + `isThinking`) and `UserMeta` (id, name, avatar, cursor color); cached Liveblocks Node client and `userIdToCursorColor` helper in `src/lib/liveblocks.ts`; `POST /api/liveblocks-auth` requires Clerk auth, verifies project access via `getAccessibleProjectByRoomId`, ensures the Liveblocks room with `getOrCreateRoom` using the project ID as the room ID, returns an access session with user name, avatar, and deterministic cursor color (`403` when project access is denied); `@liveblocks/node` added for server auth; `npm run build` passing.
 - Feature 11: Base canvas - workspace page remains server-side; `EditorWorkspaceCanvas` client wrapper adds `LiveblocksProvider` (`/api/liveblocks-auth`), `RoomProvider` with room ID, `initialPresence` (`cursor: null`, `isThinking: false`), typed `initialStorage` with empty `flow` (`LiveObject` + `LiveMap` nodes/edges), `ClientSideSuspense` loading UI, and `react-error-boundary` error fallback; `EditorWorkspaceCanvasFlow` wires `useLiveblocksFlow` (`suspense: true`, empty initial nodes/edges) into `ReactFlow` with `ConnectionMode.Loose`, `fitView`, `MiniMap`, dot `Background`, and `Cursors`; shared types in `src/types/canvas.ts` (`CanvasNodeData` label/color/shape, `canvasNode` / `canvasEdge`); minimal `canvasNode` / `canvasEdge` wiring (default-like node shell + `BezierEdge`) without controls, persistence, or AI behavior; `liveblocks.config.ts` `Storage` now types `flow` as `LiveblocksFlow<CanvasNode, CanvasEdge>`; `react-error-boundary` dependency added; `npm run build` passing.
 - Feature 12: Shape panel - bottom-center pill `Panel` with draggable Lucide shape buttons (`EditorCanvasShapePanel`); drag payload via `application/x-ghost-canvas-shape` + `text/plain` JSON (`CanvasShapeDragPayload`: shape + default width/height from `src/lib/canvas-shape-defs.ts`); `ReactFlow` `onDragOver`/`onDrop` with `onInit` ref to `screenToFlowPosition`, `onNodesChange` add nodes with ids `${shape}-${timestamp}-${counter}`, empty label, `DEFAULT_CANVAS_NODE_COLOR`, `canvasNode` type and `style` dimensions; `WorkspaceCanvasNode` renders all shapes as bordered rectangles with centered label; `npm run build` passing.
+- Feature 13: Node shape - `CanvasNodeShapeView` (`canvas-node-shape-view.tsx`) renders rectangle/pill/circle with CSS (`rounded-none` / `rounded-full`) and diamond/hexagon/cylinder with scaled SVG (`viewBox` + `preserveAspectRatio="none"`, `vectorEffect="nonScalingStroke"`); borders use subtle zinc at rest and brighter zinc when `selected`; `WorkspaceCanvasNode` composes shape view with centered label overlay and unchanged handles; shape panel uses empty `canvas` drag image plus `createPortal` ghost (`CanvasNodeShapeView` with `ghost`, default fill, cursor-centered position on `drag`/`dragStart`, cleared on `dragEnd`) without changing drop/create logic; `npm run build` passing.
 
 ## In Progress
 
@@ -29,7 +30,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- Feature 13 (TBD)
+- Feature 14 (Node editing)
 
 ## Open Questions
 
@@ -51,6 +52,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - Liveblocks: project ID is the Liveblocks room ID; auth uses access tokens (`prepareSession` + `session.allow` for the room) after Clerk + `project-access` checks; rooms are provisioned with `getOrCreateRoom` and `defaultAccesses: ["room:write"]` for the access-token model; `LIVEBLOCKS_SECRET_KEY` is required at runtime.
 - Collaborative canvas: `@liveblocks/react-flow` stores the diagram under Storage key `flow` (typed in `liveblocks.config.ts`); the workspace canvas is mounted only on the client with `LiveblocksProvider` + `RoomProvider`, `ClientSideSuspense` for loading, and an error boundary for connection failures; React Flow state uses `useLiveblocksFlow` with shared `CanvasNode` / `CanvasEdge` types from `src/types/canvas.ts`.
 - Shape palette: new nodes are added through Liveblocks-aware `onNodesChange` add mutations (not `addNodes`) so storage stays authoritative; palette drag payload is versioned JSON with explicit default sizes per shape.
+- Node visuals: per-shape rendering is shared via `CanvasNodeShapeView`; palette drag uses a portal ghost only (native drag preview suppressed) so drop behavior and `onNodesChange` adds stay unchanged.
 
 ## Session Notes
 
@@ -67,3 +69,4 @@ Update this file whenever the current phase, active feature, or implementation s
 - Feature 10 spec source: `src/prompts/features/10-liveblocks-setup.md`.
 - Feature 11 spec source: `src/prompts/features/11-base-canvas.md`.
 - Feature 12 spec source: `src/prompts/features/12-shape-panel.md`.
+- Feature 13 spec source: `src/prompts/features/13-node-shape.md`.

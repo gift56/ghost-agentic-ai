@@ -1,21 +1,22 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import {
   Background,
   BackgroundVariant,
   BezierEdge,
-  ConnectionMode,
   Handle,
   MiniMap,
   Panel,
   Position,
   ReactFlow,
+  useUpdateNodeInternals,
   type NodeProps,
   type ReactFlowInstance,
 } from "@xyflow/react";
 import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow";
 
+import { CanvasNodeShapeView } from "@/components/editor/canvas-node-shape-view";
 import { EditorCanvasShapePanel } from "@/components/editor/editor-canvas-shape-panel";
 import {
   CANVAS_SHAPE_DRAG_MIME,
@@ -29,20 +30,38 @@ import {
   type CanvasNode,
 } from "@/types/canvas";
 
-function WorkspaceCanvasNode({ data, width, height }: NodeProps<CanvasNode>) {
+function WorkspaceCanvasNode({
+  id,
+  data,
+  width,
+  height,
+  selected,
+}: NodeProps<CanvasNode>) {
+  const updateNodeInternals = useUpdateNodeInternals();
   const w = width ?? 160;
   const h = height ?? 88;
+  const fill = data.color || DEFAULT_CANVAS_NODE_COLOR;
+
+  useLayoutEffect(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals, w, h, data.shape, selected]);
+
   return (
     <div
-      className="flex items-center justify-center rounded-none border border-border text-sm text-card-foreground"
-      style={{
-        width: w,
-        height: h,
-        backgroundColor: data.color || DEFAULT_CANVAS_NODE_COLOR,
-      }}
+      className="relative text-sm text-card-foreground"
+      style={{ width: w, height: h }}
     >
+      <CanvasNodeShapeView
+        shape={data.shape}
+        width={w}
+        height={h}
+        fill={fill}
+        selected={selected}
+      />
       <Handle type="target" position={Position.Top} />
-      <span className="px-2 text-center">{data.label}</span>
+      <div className="pointer-events-none absolute inset-0 z-1 flex items-center justify-center px-2">
+        <span className="text-center">{data.label}</span>
+      </div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -105,13 +124,15 @@ function EditorWorkspaceCanvasFlowInner() {
       onNodesChange([
         {
           type: "add",
-          item: {
+            item: {
             id,
             type: canvasNode,
             position: {
               x: flowPoint.x - nodeWidth / 2,
               y: flowPoint.y - nodeHeight / 2,
             },
+            width: nodeWidth,
+            height: nodeHeight,
             data: {
               label: "",
               color: DEFAULT_CANVAS_NODE_COLOR,
@@ -143,7 +164,6 @@ function EditorWorkspaceCanvasFlowInner() {
         onDelete={onDelete}
         onDragOver={onDragOver}
         onDrop={onDrop}
-        connectionMode={ConnectionMode.Loose}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.25}
