@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ type ProjectSidebarProps = {
   onClose: () => void;
   ownedProjects: SidebarProject[];
   sharedProjects: SidebarProject[];
+  activeRoomId?: string | null;
   onCreateProject: () => void;
   onRenameProject: (project: SidebarProject) => void;
   onDeleteProject: (project: SidebarProject) => void;
@@ -26,6 +28,7 @@ export function ProjectSidebar({
   onClose,
   ownedProjects,
   sharedProjects,
+  activeRoomId,
   onCreateProject,
   onRenameProject,
   onDeleteProject,
@@ -63,16 +66,25 @@ export function ProjectSidebar({
                   {ownedProjects.map((project) => (
                     <li
                       key={project.id}
-                      className="rounded-lg border border-border bg-(--bg-subtle) p-2.5"
+                      className={`rounded-lg border p-2.5 ${
+                        activeRoomId === project.roomId
+                          ? "border-primary/60 bg-primary/10"
+                          : "border-border bg-(--bg-subtle)"
+                      }`}
                     >
                       <div className="flex items-center gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {project.name}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            /{project.roomId}
-                          </p>
+                          <Link
+                            href={`/editor/${project.roomId}`}
+                            className="block"
+                          >
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {project.name}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              /{project.roomId}
+                            </p>
+                          </Link>
                         </div>
                         <Button
                           variant="ghost"
@@ -106,14 +118,23 @@ export function ProjectSidebar({
                   {sharedProjects.map((project) => (
                     <li
                       key={project.id}
-                      className="rounded-lg border border-border bg-(--bg-subtle) p-2.5"
+                      className={`rounded-lg border p-2.5 ${
+                        activeRoomId === project.roomId
+                          ? "border-primary/60 bg-primary/10"
+                          : "border-border bg-(--bg-subtle)"
+                      }`}
                     >
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {project.name}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        /{project.roomId}
-                      </p>
+                      <Link
+                        href={`/editor/${project.roomId}`}
+                        className="block"
+                      >
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {project.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          /{project.roomId}
+                        </p>
+                      </Link>
                     </li>
                   ))}
                 </ul>
@@ -127,7 +148,11 @@ export function ProjectSidebar({
         </div>
 
         <div className="border-t border-border p-4">
-          <Button className="w-full" data-icon="inline-start" onClick={onCreateProject}>
+          <Button
+            className="w-full"
+            data-icon="inline-start"
+            onClick={onCreateProject}
+          >
             <Plus />
             New Project
           </Button>

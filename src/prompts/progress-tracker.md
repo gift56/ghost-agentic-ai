@@ -3,10 +3,10 @@
 Update this file whenever the current phase, active feature, or implementation state changes.
 
 ## Current Phase
-- Feature 07 (Wire Editor Home) - completed
+- Feature 09 (Share Dialog) - completed
 
 ## Current Goal
-- Feature 08 (TBD)
+- Feature 10 (TBD)
 
 ## Completed
 
@@ -17,14 +17,16 @@ Update this file whenever the current phase, active feature, or implementation s
 - Feature 05: Prisma - `prisma/models/project.prisma` added with `ProjectStatus` enum, `Project` model (Clerk owner ID, name, optional description, `DRAFT`/`ARCHIVED` status, `canvasJsonPath`, timestamps, indexes on owner and creation date), and `ProjectCollaborator` model (project relation with cascade delete, collaborator email, timestamp, unique `projectId/email`, indexes on email and `projectId/createdAt`); cached Prisma singleton added at `lib/prisma.ts` with `DATABASE_URL` branching (`prisma+postgres://` uses Accelerate via `accelerateUrl`, otherwise direct `@prisma/adapter-pg`); first migration applied (`20260509234554_init_project`), client generated, and `npm run build` passing.
 - Feature 06: Project APIs - backend routes implemented at `src/app/api/projects/route.ts` (`GET` list current user projects, `POST` create project) and `src/app/api/projects/[projectId]/route.ts` (`PATCH` rename project, `DELETE` delete project); Clerk auth enforced in all handlers (`401` for unauthenticated), mutations enforce strict ownership (`403` for non-owner), project creation defaults missing/blank names to `Untitled Project`, and Prisma `cuid()` ID strategy remains unchanged.
 - Feature 07: Wire Editor Home - `/editor` is now a server component that fetches owned/shared project lists via `getEditorHomeProjects` (`src/lib/project-data.ts`) and passes both lists to the sidebar; new `useProjectActions` hook in `src/hooks/use-project-actions.ts` manages dialog state and project mutations (create with short suffix + slugified room ID, rename, delete), calls real APIs, navigates to workspace on create, refreshes on rename/delete, and redirects to `/editor` when deleting the active workspace; sidebar and dialogs are fully wired to real data/actions, including room ID preview in create, prefilled rename, and project name in delete; `POST /api/projects` now accepts optional `id` so project ID and room ID stay aligned.
+- Feature 08: Editor Workspace Shell - server route added at `src/app/editor/[roomId]/page.tsx` with pre-render access checks (unauthenticated users redirect to `/sign-in`; missing or unauthorized projects render `AccessDenied`), shared access helpers added in `src/lib/project-access.ts` (current Clerk identity with `userId` + primary email and owner/collaborator project access lookup), new `AccessDenied` state added in `src/components/editor/access-denied.tsx`, and workspace shell UI implemented via `EditorWorkspaceClient` with project title in navbar, share button + AI sidebar toggle placeholders, active room highlighting in sidebar, central dark canvas placeholder, and right AI sidebar placeholder.
+- Feature 09: Share Dialog - share workflow implemented for workspace navbar with `Share` opening `ShareDialog`; owners can invite collaborators by email, remove collaborators, view collaborator list, and copy project link with temporary `Copied!` feedback; collaborators can view collaborator list in read-only mode; new API route `src/app/api/projects/[projectId]/collaborators/route.ts` added for list/invite/remove with auth checks and strict owner enforcement on invite/remove; collaborator emails are enriched via Clerk Backend API (`displayName` + `avatarUrl`) with email fallback when Clerk user data is unavailable; workspace access model now includes `isOwner` in `src/lib/project-access.ts` and is passed through `src/app/editor/[roomId]/page.tsx` to client UI.
 
 ## In Progress
 
-- Feature 08 (TBD)
+- Feature 10 (TBD)
 
 ## Next Up
 
-- Feature 08 (TBD)
+- Feature 10 (TBD)
 
 ## Open Questions
 
@@ -41,6 +43,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - Prisma client initialization is centralized in `lib/prisma.ts` as a development-cached singleton and branches by `DATABASE_URL` (`prisma+postgres://` uses Accelerate; otherwise use direct `@prisma/adapter-pg`).
 - Project API ownership policy: only project owners can rename/delete, and unauthorized/non-owner failures return `401`/`403` respectively.
 - Editor home project data is fetched server-side via `getEditorHomeProjects` and passed into client UI as owned/shared lists to avoid client-side initial fetch.
+- Workspace route access is enforced server-side via `lib/project-access.ts` and unauthorized/missing projects resolve to a shared `AccessDenied` UI.
+- Share access policy: collaborator listing is available to users with project access (owner or collaborator), while invite/remove actions are enforced as owner-only on the server.
 
 ## Session Notes
 
@@ -52,3 +56,5 @@ Update this file whenever the current phase, active feature, or implementation s
 - Feature 05 migration applied to DB and filesystem at `prisma/migrations/20260509234554_init_project/migration.sql`.
 - Feature 06 spec source: `src/prompts/features/06-project-apis.md` (list/create/rename/delete routes, owner checks, and auth status handling).
 - Feature 07 spec source: `src/prompts/features/07-wire-editor-home.md`.
+- Feature 08 spec source: `src/prompts/features/08-editor-workspace-shell.md`.
+- Feature 09 spec source: `src/prompts/features/09-share-dialog.md`.
