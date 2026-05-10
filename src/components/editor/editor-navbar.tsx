@@ -1,7 +1,7 @@
 "use client";
 
 import { ClerkLoaded, ClerkLoading, UserButton } from "@clerk/nextjs";
-import { PanelLeftClose, PanelLeftOpen, PanelRightOpen, Share2 } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Share2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,7 +39,9 @@ export function EditorNavbar({
           {isSidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
         </Button>
         {projectName ? (
-          <p className="truncate text-sm font-medium text-foreground">{projectName}</p>
+          <p className="truncate text-sm font-medium text-foreground">
+            {projectName}
+          </p>
         ) : null}
       </div>
       <div className="flex flex-1 items-center justify-center" />
@@ -50,7 +52,7 @@ export function EditorNavbar({
               type="button"
               variant="outline"
               size="sm"
-              data-icon="inline-start"
+              data-icon="inline-start py-2! px-4!"
               onClick={onShareClick}
             >
               <Share2 />
@@ -58,12 +60,17 @@ export function EditorNavbar({
             </Button>
             <Button
               type="button"
-              variant={isAiSidebarOpen ? "secondary" : "outline"}
-              size="icon-sm"
+              variant="default"
+              size="sm"
+              data-icon="inline-start"
               onClick={onToggleAiSidebar}
-              aria-label={isAiSidebarOpen ? "Close AI sidebar" : "Open AI sidebar"}
+              aria-expanded={isAiSidebarOpen}
+              aria-label={
+                isAiSidebarOpen ? "Close Ask AI panel" : "Open Ask AI panel"
+              }
             >
-              <PanelRightOpen />
+              <Sparkles />
+              Ask AI
             </Button>
           </>
         ) : null}

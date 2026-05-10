@@ -3,10 +3,10 @@
 Update this file whenever the current phase, active feature, or implementation state changes.
 
 ## Current Phase
-- Feature 09 (Share Dialog) - completed
+- Feature 12 (Shape panel) - completed
 
 ## Current Goal
-- Feature 10 (TBD)
+- Feature 13 (TBD)
 
 ## Completed
 
@@ -19,14 +19,17 @@ Update this file whenever the current phase, active feature, or implementation s
 - Feature 07: Wire Editor Home - `/editor` is now a server component that fetches owned/shared project lists via `getEditorHomeProjects` (`src/lib/project-data.ts`) and passes both lists to the sidebar; new `useProjectActions` hook in `src/hooks/use-project-actions.ts` manages dialog state and project mutations (create with short suffix + slugified room ID, rename, delete), calls real APIs, navigates to workspace on create, refreshes on rename/delete, and redirects to `/editor` when deleting the active workspace; sidebar and dialogs are fully wired to real data/actions, including room ID preview in create, prefilled rename, and project name in delete; `POST /api/projects` now accepts optional `id` so project ID and room ID stay aligned.
 - Feature 08: Editor Workspace Shell - server route added at `src/app/editor/[roomId]/page.tsx` with pre-render access checks (unauthenticated users redirect to `/sign-in`; missing or unauthorized projects render `AccessDenied`), shared access helpers added in `src/lib/project-access.ts` (current Clerk identity with `userId` + primary email and owner/collaborator project access lookup), new `AccessDenied` state added in `src/components/editor/access-denied.tsx`, and workspace shell UI implemented via `EditorWorkspaceClient` with project title in navbar, share button + AI sidebar toggle placeholders, active room highlighting in sidebar, central dark canvas placeholder, and right AI sidebar placeholder.
 - Feature 09: Share Dialog - share workflow implemented for workspace navbar with `Share` opening `ShareDialog`; owners can invite collaborators by email, remove collaborators, view collaborator list, and copy project link with temporary `Copied!` feedback; collaborators can view collaborator list in read-only mode; new API route `src/app/api/projects/[projectId]/collaborators/route.ts` added for list/invite/remove with auth checks and strict owner enforcement on invite/remove; collaborator emails are enriched via Clerk Backend API (`displayName` + `avatarUrl`) with email fallback when Clerk user data is unavailable; workspace access model now includes `isOwner` in `src/lib/project-access.ts` and is passed through `src/app/editor/[roomId]/page.tsx` to client UI.
+- Feature 10: Liveblocks setup - root `liveblocks.config.ts` defines `Presence` (cursor + `isThinking`) and `UserMeta` (id, name, avatar, cursor color); cached Liveblocks Node client and `userIdToCursorColor` helper in `src/lib/liveblocks.ts`; `POST /api/liveblocks-auth` requires Clerk auth, verifies project access via `getAccessibleProjectByRoomId`, ensures the Liveblocks room with `getOrCreateRoom` using the project ID as the room ID, returns an access session with user name, avatar, and deterministic cursor color (`403` when project access is denied); `@liveblocks/node` added for server auth; `npm run build` passing.
+- Feature 11: Base canvas - workspace page remains server-side; `EditorWorkspaceCanvas` client wrapper adds `LiveblocksProvider` (`/api/liveblocks-auth`), `RoomProvider` with room ID, `initialPresence` (`cursor: null`, `isThinking: false`), typed `initialStorage` with empty `flow` (`LiveObject` + `LiveMap` nodes/edges), `ClientSideSuspense` loading UI, and `react-error-boundary` error fallback; `EditorWorkspaceCanvasFlow` wires `useLiveblocksFlow` (`suspense: true`, empty initial nodes/edges) into `ReactFlow` with `ConnectionMode.Loose`, `fitView`, `MiniMap`, dot `Background`, and `Cursors`; shared types in `src/types/canvas.ts` (`CanvasNodeData` label/color/shape, `canvasNode` / `canvasEdge`); minimal `canvasNode` / `canvasEdge` wiring (default-like node shell + `BezierEdge`) without controls, persistence, or AI behavior; `liveblocks.config.ts` `Storage` now types `flow` as `LiveblocksFlow<CanvasNode, CanvasEdge>`; `react-error-boundary` dependency added; `npm run build` passing.
+- Feature 12: Shape panel - bottom-center pill `Panel` with draggable Lucide shape buttons (`EditorCanvasShapePanel`); drag payload via `application/x-ghost-canvas-shape` + `text/plain` JSON (`CanvasShapeDragPayload`: shape + default width/height from `src/lib/canvas-shape-defs.ts`); `ReactFlow` `onDragOver`/`onDrop` with `onInit` ref to `screenToFlowPosition`, `onNodesChange` add nodes with ids `${shape}-${timestamp}-${counter}`, empty label, `DEFAULT_CANVAS_NODE_COLOR`, `canvasNode` type and `style` dimensions; `WorkspaceCanvasNode` renders all shapes as bordered rectangles with centered label; `npm run build` passing.
 
 ## In Progress
 
-- Feature 10 (TBD)
+- None.
 
 ## Next Up
 
-- Feature 10 (TBD)
+- Feature 13 (TBD)
 
 ## Open Questions
 
@@ -45,6 +48,9 @@ Update this file whenever the current phase, active feature, or implementation s
 - Editor home project data is fetched server-side via `getEditorHomeProjects` and passed into client UI as owned/shared lists to avoid client-side initial fetch.
 - Workspace route access is enforced server-side via `lib/project-access.ts` and unauthorized/missing projects resolve to a shared `AccessDenied` UI.
 - Share access policy: collaborator listing is available to users with project access (owner or collaborator), while invite/remove actions are enforced as owner-only on the server.
+- Liveblocks: project ID is the Liveblocks room ID; auth uses access tokens (`prepareSession` + `session.allow` for the room) after Clerk + `project-access` checks; rooms are provisioned with `getOrCreateRoom` and `defaultAccesses: ["room:write"]` for the access-token model; `LIVEBLOCKS_SECRET_KEY` is required at runtime.
+- Collaborative canvas: `@liveblocks/react-flow` stores the diagram under Storage key `flow` (typed in `liveblocks.config.ts`); the workspace canvas is mounted only on the client with `LiveblocksProvider` + `RoomProvider`, `ClientSideSuspense` for loading, and an error boundary for connection failures; React Flow state uses `useLiveblocksFlow` with shared `CanvasNode` / `CanvasEdge` types from `src/types/canvas.ts`.
+- Shape palette: new nodes are added through Liveblocks-aware `onNodesChange` add mutations (not `addNodes`) so storage stays authoritative; palette drag payload is versioned JSON with explicit default sizes per shape.
 
 ## Session Notes
 
@@ -58,3 +64,6 @@ Update this file whenever the current phase, active feature, or implementation s
 - Feature 07 spec source: `src/prompts/features/07-wire-editor-home.md`.
 - Feature 08 spec source: `src/prompts/features/08-editor-workspace-shell.md`.
 - Feature 09 spec source: `src/prompts/features/09-share-dialog.md`.
+- Feature 10 spec source: `src/prompts/features/10-liveblocks-setup.md`.
+- Feature 11 spec source: `src/prompts/features/11-base-canvas.md`.
+- Feature 12 spec source: `src/prompts/features/12-shape-panel.md`.

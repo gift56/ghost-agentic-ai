@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { EditorWorkspaceCanvas } from "@/components/editor/editor-workspace-canvas";
 import { ProjectDialogs } from "@/components/editor/project-dialogs";
 import { ShareDialog } from "@/components/editor/share-dialog";
 import { EditorLayout } from "@/components/editor/editor-layout";
@@ -39,14 +40,7 @@ export function EditorWorkspaceClient({
         onDeleteProject={actions.openDeleteDialog}
         onShareProject={() => setIsShareDialogOpen(true)}
       >
-        <section className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-zinc-950 px-6 py-12">
-          <div className="text-center">
-            <h1 className="text-xl font-semibold text-zinc-100">Canvas Coming Soon</h1>
-            <p className="mt-2 text-sm text-zinc-400">
-              This workspace shell is ready. Canvas editing will be added next.
-            </p>
-          </div>
-        </section>
+        <EditorWorkspaceCanvas roomId={roomId} />
       </EditorLayout>
       <ProjectDialogs
         activeDialog={actions.activeDialog}

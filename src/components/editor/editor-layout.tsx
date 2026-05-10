@@ -8,6 +8,7 @@ import {
   type SidebarProject,
   ProjectSidebar,
 } from "@/components/editor/project-sidebar";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 type EditorLayoutProps = {
   children: ReactNode;
@@ -68,18 +69,19 @@ export function EditorLayout({
       />
       <main className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1">{children}</div>
-        {showWorkspaceActions ? (
-          <aside
-            className={`hidden border-l border-border bg-(--bg-elevated) transition-[width] duration-300 ease-out lg:block ${
-              isAiSidebarOpen ? "w-80" : "w-0 overflow-hidden border-l-0"
-            }`}
+      </main>
+      {showWorkspaceActions ? (
+        <Dialog open={isAiSidebarOpen} onOpenChange={setIsAiSidebarOpen}>
+          <DialogContent
+            showCloseButton={false}
+            className="top-0 right-0 left-auto h-dvh w-full max-w-sm translate-x-0 translate-y-0 rounded-none border-l border-border bg-(--bg-elevated) p-0 duration-200 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-right data-open:zoom-in-100 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-right data-closed:zoom-out-100"
           >
-            <div className="flex h-full w-80 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
               AI sidebar placeholder
             </div>
-          </aside>
-        ) : null}
-      </main>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </div>
   );
 }
