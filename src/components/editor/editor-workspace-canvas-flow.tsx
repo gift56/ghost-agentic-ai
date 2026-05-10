@@ -1,77 +1,87 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent,
+} from "react";
 import {
   Background,
   BackgroundVariant,
-  BezierEdge,
-  Handle,
-  MiniMap,
+  ConnectionLineType,
+  ConnectionMode,
+  MarkerType,
   Panel,
-  Position,
   ReactFlow,
-  useUpdateNodeInternals,
-  type NodeProps,
   type ReactFlowInstance,
 } from "@xyflow/react";
 import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow";
+import {
+  useCanRedo,
+  useCanUndo,
+  useRedo,
+  useUndo,
+} from "@liveblocks/react/suspense";
 
-import { CanvasNodeShapeView } from "@/components/editor/canvas-node-shape-view";
+import { EditorCanvasControlBar } from "@/components/editor/editor-canvas-control-bar";
+import {
+  CANVAS_TEMPLATES,
+  getStarterTemplateImportChanges,
+  type CanvasTemplate,
+} from "@/components/editor/starter-templates";
+import { StarterTemplatesModal } from "@/components/editor/starter-templates-modal";
+import { WorkspaceCanvasEdge } from "@/components/editor/workspace-canvas-edge";
+import {
+  CanvasEdgeUiProvider,
+  CanvasFlowOnEdgesChangeProvider,
+  CanvasFlowOnNodesChangeProvider,
+} from "@/components/editor/workspace-canvas-flow-context";
+import { WorkspaceCanvasNode } from "@/components/editor/workspace-canvas-node";
 import { EditorCanvasShapePanel } from "@/components/editor/editor-canvas-shape-panel";
 import {
   CANVAS_SHAPE_DRAG_MIME,
   parseCanvasShapeDragPayload,
 } from "@/lib/canvas-shape-defs";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import {
   canvasEdge,
   canvasNode,
   DEFAULT_CANVAS_NODE_COLOR,
+  DEFAULT_CANVAS_NODE_FOREGROUND,
   type CanvasEdge,
   type CanvasNode,
 } from "@/types/canvas";
 
-function WorkspaceCanvasNode({
-  id,
-  data,
-  width,
-  height,
-  selected,
-}: NodeProps<CanvasNode>) {
-  const updateNodeInternals = useUpdateNodeInternals();
-  const w = width ?? 160;
-  const h = height ?? 88;
-  const fill = data.color || DEFAULT_CANVAS_NODE_COLOR;
+const FIT_VIEW_ANIM_MS = 200;
 
-  useLayoutEffect(() => {
-    updateNodeInternals(id);
-  }, [id, updateNodeInternals, w, h, data.shape, selected]);
+type EditorWorkspaceCanvasFlowProps = {
+  starterTemplatesOpen: boolean;
+  onStarterTemplatesOpenChange: (open: boolean) => void;
+};
 
-  return (
-    <div
-      className="relative text-sm text-card-foreground"
-      style={{ width: w, height: h }}
-    >
-      <CanvasNodeShapeView
-        shape={data.shape}
-        width={w}
-        height={h}
-        fill={fill}
-        selected={selected}
-      />
-      <Handle type="target" position={Position.Top} />
-      <div className="pointer-events-none absolute inset-0 z-1 flex items-center justify-center px-2">
-        <span className="text-center">{data.label}</span>
-      </div>
-      <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
-}
-
-function EditorWorkspaceCanvasFlowInner() {
+function EditorWorkspaceCanvasFlowInner({
+  starterTemplatesOpen,
+  onStarterTemplatesOpenChange,
+}: EditorWorkspaceCanvasFlowProps) {
   const reactFlowRef = useRef<ReactFlowInstance<CanvasNode, CanvasEdge> | null>(
     null,
   );
   const dropCounterRef = useRef(0);
+  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
+  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+
+  const edgeUiValue = useMemo(
+    () => ({
+      editingEdgeId,
+      setEditingEdgeId,
+      hoveredEdgeId,
+      setHoveredEdgeId,
+    }),
+    [editingEdgeId, hoveredEdgeId],
+  );
 
   const nodeTypes = useMemo(
     () => ({
@@ -82,7 +92,27 @@ function EditorWorkspaceCanvasFlowInner() {
 
   const edgeTypes = useMemo(
     () => ({
-      [canvasEdge]: BezierEdge,
+      [canvasEdge]: WorkspaceCanvasEdge,
+    }),
+    [],
+  );
+
+  const defaultEdgeOptions = useMemo(
+    () => ({
+      type: canvasEdge,
+      style: {
+        stroke: "#a1a1aa",
+        strokeWidth: 1.25,
+        strokeLinecap: "round" as const,
+        strokeLinejoin: "round" as const,
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        width: 14,
+        height: 14,
+        color: "#a1a1aa",
+      },
+      pathOptions: { borderRadius: 0, offset: 16 },
     }),
     [],
   );
@@ -94,7 +124,18 @@ function EditorWorkspaceCanvasFlowInner() {
       edges: { initial: [] },
     });
 
-  const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+  const undo = useUndo();
+  const redo = useRedo();
+  const canUndo = useCanUndo();
+  const canRedo = useCanRedo();
+
+  useKeyboardShortcuts<CanvasNode, CanvasEdge>({
+    reactFlowRef,
+    onUndo: undo,
+    onRedo: redo,
+  });
+
+  const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     const types = Array.from(event.dataTransfer.types);
     if (!types.includes(CANVAS_SHAPE_DRAG_MIME)) return;
     event.preventDefault();
@@ -102,7 +143,7 @@ function EditorWorkspaceCanvasFlowInner() {
   }, []);
 
   const onDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
+    (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
       const rf = reactFlowRef.current;
       if (!rf) return;
@@ -124,7 +165,7 @@ function EditorWorkspaceCanvasFlowInner() {
       onNodesChange([
         {
           type: "add",
-            item: {
+          item: {
             id,
             type: canvasNode,
             position: {
@@ -136,6 +177,7 @@ function EditorWorkspaceCanvasFlowInner() {
             data: {
               label: "",
               color: DEFAULT_CANVAS_NODE_COLOR,
+              foreground: DEFAULT_CANVAS_NODE_FOREGROUND,
               shape,
             },
             style: { width: nodeWidth, height: nodeHeight },
@@ -146,52 +188,126 @@ function EditorWorkspaceCanvasFlowInner() {
     [onNodesChange],
   );
 
+  const onEdgeDoubleClick = useCallback(
+    (_event: MouseEvent, edge: CanvasEdge) => {
+      setEditingEdgeId(edge.id);
+    },
+    [],
+  );
+
+  const onEdgeMouseEnter = useCallback(
+    (_event: MouseEvent, edge: CanvasEdge) => {
+      setHoveredEdgeId(edge.id);
+    },
+    [],
+  );
+
+  const onEdgeMouseLeave = useCallback(
+    (_event: MouseEvent, edge: CanvasEdge) => {
+      setHoveredEdgeId((current) => (current === edge.id ? null : current));
+    },
+    [],
+  );
+
+  const importStarterTemplate = useCallback(
+    (template: CanvasTemplate) => {
+      setEditingEdgeId(null);
+      setHoveredEdgeId(null);
+      const {
+        clearEdgeChanges,
+        clearNodeChanges,
+        templateNodeChanges,
+        templateEdgeChanges,
+      } = getStarterTemplateImportChanges(template, nodes, edges);
+
+      if (clearEdgeChanges.length) onEdgesChange(clearEdgeChanges);
+      if (clearNodeChanges.length) onNodesChange(clearNodeChanges);
+      if (templateNodeChanges.length) onNodesChange(templateNodeChanges);
+      if (templateEdgeChanges.length) onEdgesChange(templateEdgeChanges);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          reactFlowRef.current?.fitView({
+            padding: 0.2,
+            duration: FIT_VIEW_ANIM_MS,
+          });
+        });
+      });
+    },
+    [edges, nodes, onEdgesChange, onNodesChange],
+  );
+
   return (
     <div className="h-[calc(100dvh-3.5rem)] w-full bg-zinc-950">
-      <ReactFlow<CanvasNode, CanvasEdge>
-        className="h-full w-full"
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        defaultEdgeOptions={{ type: canvasEdge }}
-        onInit={(instance) => {
-          reactFlowRef.current = instance;
-        }}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onDelete={onDelete}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.25}
-        maxZoom={2}
-      >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={16}
-          size={1}
-          color="rgb(63 63 70 / 0.45)"
-        />
-        <MiniMap
-          className="m-3! rounded-md! border! border-border! bg-zinc-900/90!"
-          maskColor="rgb(24 24 27 / 0.65)"
-          nodeStrokeWidth={2}
-        />
-        <Cursors />
-        <Panel
-          position="bottom-center"
-          className="m-0 mb-4! flex justify-center p-0"
-        >
-          <EditorCanvasShapePanel />
-        </Panel>
-      </ReactFlow>
+      <CanvasEdgeUiProvider value={edgeUiValue}>
+        <CanvasFlowOnNodesChangeProvider onNodesChange={onNodesChange}>
+          <CanvasFlowOnEdgesChangeProvider onEdgesChange={onEdgesChange}>
+            <ReactFlow<CanvasNode, CanvasEdge>
+              colorMode="dark"
+              className="h-full w-full"
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              defaultEdgeOptions={defaultEdgeOptions}
+              connectionMode={ConnectionMode.Loose}
+              connectionLineType={ConnectionLineType.SmoothStep}
+              onInit={(instance) => {
+                reactFlowRef.current = instance;
+              }}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onDelete={onDelete}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+              onEdgeDoubleClick={onEdgeDoubleClick}
+              onEdgeMouseEnter={onEdgeMouseEnter}
+              onEdgeMouseLeave={onEdgeMouseLeave}
+              fitView
+              fitViewOptions={{ padding: 0.2 }}
+              minZoom={0.25}
+              maxZoom={2}
+            >
+              <Background
+                variant={BackgroundVariant.Dots}
+                gap={16}
+                size={1}
+                color="rgb(63 63 70 / 0.45)"
+              />
+              <Cursors />
+              <Panel
+                position="bottom-left"
+                className="m-0 mb-4! ml-4! p-0"
+              >
+                <EditorCanvasControlBar
+                  reactFlowRef={reactFlowRef}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={undo}
+                  onRedo={redo}
+                />
+              </Panel>
+              <Panel
+                position="bottom-center"
+                className="m-0 mb-4! flex justify-center p-0"
+              >
+                <EditorCanvasShapePanel />
+              </Panel>
+            </ReactFlow>
+          </CanvasFlowOnEdgesChangeProvider>
+        </CanvasFlowOnNodesChangeProvider>
+      </CanvasEdgeUiProvider>
+      <StarterTemplatesModal
+        open={starterTemplatesOpen}
+        onOpenChange={onStarterTemplatesOpenChange}
+        templates={CANVAS_TEMPLATES}
+        onImport={importStarterTemplate}
+      />
     </div>
   );
 }
 
-export function EditorWorkspaceCanvasFlow() {
-  return <EditorWorkspaceCanvasFlowInner />;
+export function EditorWorkspaceCanvasFlow(props: EditorWorkspaceCanvasFlowProps) {
+  return <EditorWorkspaceCanvasFlowInner {...props} />;
 }

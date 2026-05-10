@@ -15,6 +15,8 @@ import { EditorWorkspaceCanvasFlow } from "@/components/editor/editor-workspace-
 
 type EditorWorkspaceCanvasProps = {
   roomId: string;
+  starterTemplatesOpen: boolean;
+  onStarterTemplatesOpenChange: (open: boolean) => void;
 };
 
 function EditorWorkspaceCanvasLoading() {
@@ -39,7 +41,11 @@ function EditorWorkspaceCanvasError() {
   );
 }
 
-export function EditorWorkspaceCanvas({ roomId }: EditorWorkspaceCanvasProps) {
+export function EditorWorkspaceCanvas({
+  roomId,
+  starterTemplatesOpen,
+  onStarterTemplatesOpenChange,
+}: EditorWorkspaceCanvasProps) {
   return (
     <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
       <RoomProvider
@@ -54,7 +60,10 @@ export function EditorWorkspaceCanvas({ roomId }: EditorWorkspaceCanvasProps) {
       >
         <ErrorBoundary fallback={<EditorWorkspaceCanvasError />}>
           <ClientSideSuspense fallback={<EditorWorkspaceCanvasLoading />}>
-            <EditorWorkspaceCanvasFlow />
+            <EditorWorkspaceCanvasFlow
+              starterTemplatesOpen={starterTemplatesOpen}
+              onStarterTemplatesOpenChange={onStarterTemplatesOpenChange}
+            />
           </ClientSideSuspense>
         </ErrorBoundary>
       </RoomProvider>

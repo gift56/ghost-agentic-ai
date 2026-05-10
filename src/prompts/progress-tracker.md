@@ -3,10 +3,10 @@
 Update this file whenever the current phase, active feature, or implementation state changes.
 
 ## Current Phase
-- Feature 13 (Node shape) - completed
+- Feature 18 (Starter template library) - completed
 
 ## Current Goal
-- Feature 14 (Node editing)
+- None (awaiting next feature spec)
 
 ## Completed
 
@@ -23,6 +23,11 @@ Update this file whenever the current phase, active feature, or implementation s
 - Feature 11: Base canvas - workspace page remains server-side; `EditorWorkspaceCanvas` client wrapper adds `LiveblocksProvider` (`/api/liveblocks-auth`), `RoomProvider` with room ID, `initialPresence` (`cursor: null`, `isThinking: false`), typed `initialStorage` with empty `flow` (`LiveObject` + `LiveMap` nodes/edges), `ClientSideSuspense` loading UI, and `react-error-boundary` error fallback; `EditorWorkspaceCanvasFlow` wires `useLiveblocksFlow` (`suspense: true`, empty initial nodes/edges) into `ReactFlow` with `ConnectionMode.Loose`, `fitView`, `MiniMap`, dot `Background`, and `Cursors`; shared types in `src/types/canvas.ts` (`CanvasNodeData` label/color/shape, `canvasNode` / `canvasEdge`); minimal `canvasNode` / `canvasEdge` wiring (default-like node shell + `BezierEdge`) without controls, persistence, or AI behavior; `liveblocks.config.ts` `Storage` now types `flow` as `LiveblocksFlow<CanvasNode, CanvasEdge>`; `react-error-boundary` dependency added; `npm run build` passing.
 - Feature 12: Shape panel - bottom-center pill `Panel` with draggable Lucide shape buttons (`EditorCanvasShapePanel`); drag payload via `application/x-ghost-canvas-shape` + `text/plain` JSON (`CanvasShapeDragPayload`: shape + default width/height from `src/lib/canvas-shape-defs.ts`); `ReactFlow` `onDragOver`/`onDrop` with `onInit` ref to `screenToFlowPosition`, `onNodesChange` add nodes with ids `${shape}-${timestamp}-${counter}`, empty label, `DEFAULT_CANVAS_NODE_COLOR`, `canvasNode` type and `style` dimensions; `WorkspaceCanvasNode` renders all shapes as bordered rectangles with centered label; `npm run build` passing.
 - Feature 13: Node shape - `CanvasNodeShapeView` (`canvas-node-shape-view.tsx`) renders rectangle/pill/circle with CSS (`rounded-none` / `rounded-full`) and diamond/hexagon/cylinder with scaled SVG (`viewBox` + `preserveAspectRatio="none"`, `vectorEffect="nonScalingStroke"`); borders use subtle zinc at rest and brighter zinc when `selected`; `WorkspaceCanvasNode` composes shape view with centered label overlay and unchanged handles; shape panel uses empty `canvas` drag image plus `createPortal` ghost (`CanvasNodeShapeView` with `ghost`, default fill, cursor-centered position on `drag`/`dragStart`, cleared on `dragEnd`) without changing drop/create logic; `npm run build` passing.
+- Feature 14: Node editing - `WorkspaceCanvasNode` moved to `workspace-canvas-node.tsx` with `NodeResizer` (visible when selected, min size from `src/lib/canvas-node-bounds.ts`, subtle zinc handles/lines); centered label with muted `Untitled` placeholder when empty; double-click label shell opens native centered `textarea` (`nodrag`/`nopan`, pointer `stopPropagation`) updating label via `onNodesChange` `replace` through `CanvasFlowOnNodesChangeProvider`; blur/Escape closes edit; `editor-workspace-canvas-flow.tsx` wraps `ReactFlow` with the provider; shape panel, drop path, and `CanvasNodeShapeView` rendering unchanged; `npm run build` passing.
+- Feature 15: Nodes color toolbar - eight predefined fill/text pairs from `src/prompts/ui-context.md` centralized as `NODE_COLORS` plus `DEFAULT_CANVAS_NODE_FOREGROUND` and `resolveCanvasNodeForeground` in `src/types/canvas.ts`; optional `foreground` on `CanvasNodeData`; new drops include default pair; selected nodes show `CanvasNodeColorToolbar` floated above the node (`nodrag`/`nopan`, swallow pointer propagation); swatches use paired hover glow from text color and clear selected styling; palette selection applies `replace` updates through existing Liveblocks `useLiveblocksFlow`; label and textarea use resolved foreground color; drag/drop and selection wiring unchanged; `npm run build` passing.
+- Feature 16: Edge behavior - `CanvasEdgeData` with optional `label` on `CanvasEdge` in `src/types/canvas.ts`; `WorkspaceCanvasNode` adds stacked source/target handles on all four sides (subtle white dots, dark border, hidden until `group-hover/canvas-node` or selected); `WorkspaceCanvasEdge` uses `getSmoothStepPath` (right angles via `borderRadius: 0`), `BaseEdge` with wide `interactionWidth`, `EdgeLabelRenderer` positioned with `labelX`/`labelY` from `getSmoothStepPath` (no manual midpoint); stroke brightens on hover/selection via `CanvasEdgeUiProvider` + local label-zone hover; inline label editing (double-click edge or label zone, pill when saved, faint hint when empty and hovered/selected) with `nodrag`/`nopan` and `onEdgesChange` `replace` through Liveblocks; `editor-workspace-canvas-flow.tsx` wires `WorkspaceCanvasEdge`, `defaultEdgeOptions` (rounded stroke caps, `MarkerType.ArrowClosed`), `ConnectionMode.Loose`, `ConnectionLineType.SmoothStep`, and `CanvasFlowOnEdgesChangeProvider`; `npm run build` passing.
+- Feature 17: Canvas ergonomics - bottom-left pill `EditorCanvasControlBar` (`editor-canvas-control-bar.tsx`) above shape panel placement: zoom out / fit view / zoom in (React Flow `zoomOut` / `fitView` / `zoomIn` with 200ms `duration`), thin vertical divider, undo/redo via `useUndo` / `useRedo` / `useCanUndo` / `useCanRedo` from `@liveblocks/react/suspense` with disabled + dimmed history buttons when unavailable; `useKeyboardShortcuts` in `src/hooks/use-keyboard-shortcuts.ts` listens on `window`, skips `input` / `textarea` / `[contenteditable="true"]`, maps `+`/`=` / `-` for zoom and mod+Z / mod+shift+Z / mod+Y for undo/redo; `MiniMap` removed from `editor-workspace-canvas-flow.tsx`; shape panel and collaborative storage unchanged; `npm run build` passing.
+- Feature 18: Starter templates - `starter-templates.ts` defines `CanvasTemplate`, `CANVAS_TEMPLATES` (microservices, CI/CD, event-driven) with `canvasNode`/`canvasEdge` data using `NODE_COLORS` and shape defaults from `CANVAS_SHAPE_DEFINITIONS`, plus `getStarterTemplateImportChanges` for ordered remove/add mutations; `StarterTemplatesModal` (`starter-templates-modal.tsx`) dialog with scrollable grid, per-card SVG line previews + `CanvasNodeShapeView` (ghost) scaled to a fixed viewport from diagram bounds, and Import that calls `onImport` then closes; `EditorWorkspaceCanvasFlow` applies imports via `useLiveblocksFlow` `onEdgesChange`/`onNodesChange` (clear edges → clear nodes → add template nodes → add template edges), resets edge edit/hover UI state, then double `requestAnimationFrame` + `fitView` (200ms); workspace navbar `Templates` (`LayoutTemplate`) wired through `EditorLayout`/`EditorWorkspaceClient`/`EditorWorkspaceCanvas`; no template save, user templates, or server persistence; `npm run build` passing.
 
 ## In Progress
 
@@ -30,7 +35,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- Feature 14 (Node editing)
+- TBD (next feature spec after Feature 18)
 
 ## Open Questions
 
@@ -50,9 +55,13 @@ Update this file whenever the current phase, active feature, or implementation s
 - Workspace route access is enforced server-side via `lib/project-access.ts` and unauthorized/missing projects resolve to a shared `AccessDenied` UI.
 - Share access policy: collaborator listing is available to users with project access (owner or collaborator), while invite/remove actions are enforced as owner-only on the server.
 - Liveblocks: project ID is the Liveblocks room ID; auth uses access tokens (`prepareSession` + `session.allow` for the room) after Clerk + `project-access` checks; rooms are provisioned with `getOrCreateRoom` and `defaultAccesses: ["room:write"]` for the access-token model; `LIVEBLOCKS_SECRET_KEY` is required at runtime.
-- Collaborative canvas: `@liveblocks/react-flow` stores the diagram under Storage key `flow` (typed in `liveblocks.config.ts`); the workspace canvas is mounted only on the client with `LiveblocksProvider` + `RoomProvider`, `ClientSideSuspense` for loading, and an error boundary for connection failures; React Flow state uses `useLiveblocksFlow` with shared `CanvasNode` / `CanvasEdge` types from `src/types/canvas.ts`.
+- Collaborative canvas: `@liveblocks/react-flow` stores the diagram under Storage key `flow` (typed in `liveblocks.config.ts`); the workspace canvas is mounted only on the client with `LiveblocksProvider` + `RoomProvider`, `ClientSideSuspense` for loading, and an error boundary for connection failures; React Flow state uses `useLiveblocksFlow` with shared `CanvasNode` / `CanvasEdge` types from `src/types/canvas.ts`; zoom/fit use the React Flow instance with short animated viewport transitions; undo/redo use Liveblocks room history hooks; keyboard shortcuts are centralized in `use-keyboard-shortcuts.ts` (exported `useKeyboardShortcuts`) with editable-field guardrails.
 - Shape palette: new nodes are added through Liveblocks-aware `onNodesChange` add mutations (not `addNodes`) so storage stays authoritative; palette drag payload is versioned JSON with explicit default sizes per shape.
 - Node visuals: per-shape rendering is shared via `CanvasNodeShapeView`; palette drag uses a portal ghost only (native drag preview suppressed) so drop behavior and `onNodesChange` adds stay unchanged.
+- Node editing: resize uses React Flow `NodeResizer` so dimensions flow through the same `onNodesChange` pipeline as `useLiveblocksFlow`; label edits dispatch `replace` node changes with updated `data.label`; interactive label/editor uses `nodrag`/`nopan` and pointer capture so canvas pan and node drag do not steal focus from typing.
+- Node palette: predefined node fill–text pairs live in `src/types/canvas.ts` as `NODE_COLORS`; the floating toolbar only swaps `data.color` and `data.foreground` via `replace` mutations so collaborative storage stays authoritative.
+- Canvas edges: collaborative `canvasEdge` type uses optional `data.label`; custom `WorkspaceCanvasEdge` owns smooth-step path geometry, hit target width, hover/selection visuals, and label UI; `CanvasEdgeUiProvider` centralizes hover + active edit id for edge chrome; label commits flow through `useCanvasFlowOnEdgesChange` + `onEdgesChange` `replace` like other Liveblocks edge updates.
+- Starter templates: predefined diagrams live in `starter-templates.ts` as typed `CanvasNode`/`CanvasEdge` arrays; import replaces the Liveblocks-backed diagram by issuing remove-then-add `onEdgesChange`/`onNodesChange` batches (never merging onto existing nodes); modal open state is owned by `EditorWorkspaceClient` and passed into `RoomProvider` children so template application stays inside `useLiveblocksFlow`.
 
 ## Session Notes
 
@@ -70,3 +79,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - Feature 11 spec source: `src/prompts/features/11-base-canvas.md`.
 - Feature 12 spec source: `src/prompts/features/12-shape-panel.md`.
 - Feature 13 spec source: `src/prompts/features/13-node-shape.md`.
+- Feature 14 spec source: `src/prompts/features/14-node-editing.md`.
+- Feature 15 spec source: `src/prompts/features/15-nodes-color-toolbar.md`.
+- Feature 16 spec source: `src/prompts/features/16-edge-behavior.md`.
+- Feature 17 spec source: `src/prompts/features/17-canvas-ergonomics.md`.
+- Feature 18 spec source: `src/prompts/features/18-starter-template.md`.

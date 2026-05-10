@@ -1,7 +1,13 @@
 "use client";
 
 import { ClerkLoaded, ClerkLoading, UserButton } from "@clerk/nextjs";
-import { PanelLeftClose, PanelLeftOpen, Share2, Sparkles } from "lucide-react";
+import {
+  LayoutTemplate,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Share2,
+  Sparkles,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +20,7 @@ type EditorNavbarProps = {
   isAiSidebarOpen?: boolean;
   onToggleAiSidebar?: () => void;
   onShareClick?: () => void;
+  onOpenStarterTemplates?: () => void;
 };
 
 export function EditorNavbar({
@@ -24,6 +31,7 @@ export function EditorNavbar({
   isAiSidebarOpen = false,
   onToggleAiSidebar,
   onShareClick,
+  onOpenStarterTemplates,
 }: EditorNavbarProps) {
   return (
     <header className="flex h-14 items-center border-b border-border bg-(--bg-surface) px-4">
@@ -48,6 +56,19 @@ export function EditorNavbar({
       <div className="flex flex-1 items-center justify-end gap-2">
         {showWorkspaceActions ? (
           <>
+            {onOpenStarterTemplates ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-icon="inline-start py-2! px-4!"
+                onClick={onOpenStarterTemplates}
+                aria-label="Open starter templates"
+              >
+                <LayoutTemplate />
+                Templates
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"

@@ -26,6 +26,7 @@ export function EditorWorkspaceClient({
 }: EditorWorkspaceClientProps) {
   const actions = useProjectActions();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isStarterTemplatesOpen, setIsStarterTemplatesOpen] = useState(false);
 
   return (
     <>
@@ -39,8 +40,13 @@ export function EditorWorkspaceClient({
         onRenameProject={actions.openRenameDialog}
         onDeleteProject={actions.openDeleteDialog}
         onShareProject={() => setIsShareDialogOpen(true)}
+        onOpenStarterTemplates={() => setIsStarterTemplatesOpen(true)}
       >
-        <EditorWorkspaceCanvas roomId={roomId} />
+        <EditorWorkspaceCanvas
+          roomId={roomId}
+          starterTemplatesOpen={isStarterTemplatesOpen}
+          onStarterTemplatesOpenChange={setIsStarterTemplatesOpen}
+        />
       </EditorLayout>
       <ProjectDialogs
         activeDialog={actions.activeDialog}

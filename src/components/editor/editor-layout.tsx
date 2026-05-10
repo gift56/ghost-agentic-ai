@@ -21,6 +21,7 @@ type EditorLayoutProps = {
   onRenameProject: (project: SidebarProject) => void;
   onDeleteProject: (project: SidebarProject) => void;
   onShareProject?: () => void;
+  onOpenStarterTemplates?: () => void;
 };
 
 export function EditorLayout({
@@ -34,6 +35,7 @@ export function EditorLayout({
   onRenameProject,
   onDeleteProject,
   onShareProject,
+  onOpenStarterTemplates,
 }: EditorLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
@@ -48,6 +50,7 @@ export function EditorLayout({
         isAiSidebarOpen={isAiSidebarOpen}
         onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
         onShareClick={onShareProject}
+        onOpenStarterTemplates={onOpenStarterTemplates}
       />
       {isSidebarOpen ? (
         <button

@@ -43,9 +43,11 @@ function SvgShapeFrame({
 function DiamondSvg({
   selected,
   ghost,
+  fillHex,
 }: {
   selected?: boolean;
   ghost?: boolean;
+  fillHex: string;
 }) {
   const stroke = ghost
     ? "rgb(82 82 91 / 0.5)"
@@ -56,7 +58,7 @@ function DiamondSvg({
     <SvgShapeFrame ghost={ghost}>
       <polygon
         points="50,2 98,50 50,98 2,50"
-        fill="currentColor"
+        fill={fillHex}
         stroke={stroke}
         strokeLinejoin="round"
         vectorEffect="nonScalingStroke"
@@ -68,9 +70,11 @@ function DiamondSvg({
 function HexagonSvg({
   selected,
   ghost,
+  fillHex,
 }: {
   selected?: boolean;
   ghost?: boolean;
+  fillHex: string;
 }) {
   const stroke = ghost
     ? "rgb(82 82 91 / 0.5)"
@@ -81,7 +85,7 @@ function HexagonSvg({
     <SvgShapeFrame ghost={ghost}>
       <polygon
         points="25,2 75,2 100,50 75,98 25,98 0,50"
-        fill="currentColor"
+        fill={fillHex}
         stroke={stroke}
         strokeLinejoin="round"
         vectorEffect="nonScalingStroke"
@@ -93,9 +97,11 @@ function HexagonSvg({
 function CylinderSvg({
   selected,
   ghost,
+  fillHex,
 }: {
   selected?: boolean;
   ghost?: boolean;
+  fillHex: string;
 }) {
   const stroke = ghost
     ? "rgb(82 82 91 / 0.5)"
@@ -106,7 +112,7 @@ function CylinderSvg({
     <SvgShapeFrame ghost={ghost}>
       <path
         d="M 12 28 A 38 11 0 1 1 88 28 L 88 72 A 38 11 0 1 1 12 72 Z"
-        fill="currentColor"
+        fill={fillHex}
         stroke={stroke}
         strokeLinejoin="round"
         vectorEffect="nonScalingStroke"
@@ -133,45 +139,36 @@ export function CanvasNodeShapeView({
 
   if (shape === "diamond") {
     return (
-      <div
-        className={cn("relative text-card-foreground", className)}
-        style={{
-          width,
-          height,
-          color: fill,
-        }}
-      >
-        <DiamondSvg selected={selected} ghost={ghost} />
+      <div className={cn("relative", className)} style={{ width, height }}>
+        <DiamondSvg
+          selected={selected}
+          ghost={ghost}
+          fillHex={fill}
+        />
       </div>
     );
   }
 
   if (shape === "hexagon") {
     return (
-      <div
-        className={cn("relative text-card-foreground", className)}
-        style={{
-          width,
-          height,
-          color: fill,
-        }}
-      >
-        <HexagonSvg selected={selected} ghost={ghost} />
+      <div className={cn("relative", className)} style={{ width, height }}>
+        <HexagonSvg
+          selected={selected}
+          ghost={ghost}
+          fillHex={fill}
+        />
       </div>
     );
   }
 
   if (shape === "cylinder") {
     return (
-      <div
-        className={cn("relative text-card-foreground", className)}
-        style={{
-          width,
-          height,
-          color: fill,
-        }}
-      >
-        <CylinderSvg selected={selected} ghost={ghost} />
+      <div className={cn("relative", className)} style={{ width, height }}>
+        <CylinderSvg
+          selected={selected}
+          ghost={ghost}
+          fillHex={fill}
+        />
       </div>
     );
   }
