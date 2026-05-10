@@ -1,36 +1,38 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 import { EditorDialogShell } from "@/components/editor/editor-dialog-shell";
-import {
-  type ProjectDialogType,
-  type ProjectDialogProject,
-} from "@/components/editor/use-project-dialogs";
+import type { ProjectDialogType } from "@/hooks/use-project-actions";
+import type { SidebarProject } from "@/components/editor/project-sidebar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 type ProjectDialogsProps = {
   activeDialog: ProjectDialogType | null;
-  selectedProject: ProjectDialogProject | null;
+  selectedProject: SidebarProject | null;
   projectName: string;
-  slugPreview: string;
+  roomIdPreview: string;
   isLoading: boolean;
   onClose: () => void;
   onProjectNameChange: (value: string) => void;
-  onSubmit: () => void;
+  onCreate: () => Promise<void>;
+  onRename: () => Promise<void>;
+  onDelete: () => Promise<void>;
 };
 
 export function ProjectDialogs({
   activeDialog,
   selectedProject,
   projectName,
-  slugPreview,
+  roomIdPreview,
   isLoading,
   onClose,
   onProjectNameChange,
-  onSubmit,
+  onCreate,
+  onRename,
+  onDelete,
 }: ProjectDialogsProps) {
   return (
     <Dialog open={activeDialog !== null} onOpenChange={(open) => !open && onClose()}>
@@ -39,18 +41,19 @@ export function ProjectDialogs({
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              onSubmit();
+              void onCreate();
             }}
           >
             <EditorDialogShell
               title="Create Project"
-              description="Start with a name and we will generate a project slug."
+              description="Start with a name and we will generate a room ID."
               footer={
                 <>
                   <Button type="button" variant="outline" onClick={onClose}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={!projectName.trim() || isLoading}>
+                    {isLoading ? <Loader2 className="animate-spin" /> : null}
                     Create Project
                   </Button>
                 </>
@@ -70,8 +73,7 @@ export function ProjectDialogs({
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Slug preview:{" "}
-                  <span className="font-mono text-foreground">/{slugPreview}</span>
+                  Room ID preview: <span className="font-mono text-foreground">{roomIdPreview}</span>
                 </p>
               </div>
             </EditorDialogShell>
@@ -82,7 +84,7 @@ export function ProjectDialogs({
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              onSubmit();
+              void onRename();
             }}
           >
             <EditorDialogShell
@@ -94,6 +96,7 @@ export function ProjectDialogs({
                     Cancel
                   </Button>
                   <Button type="submit" disabled={!projectName.trim() || isLoading}>
+                    {isLoading ? <Loader2 className="animate-spin" /> : null}
                     Save Name
                   </Button>
                 </>
@@ -123,9 +126,9 @@ export function ProjectDialogs({
                 <Button type="button" variant="outline" onClick={onClose}>
                   Cancel
                 </Button>
-                <Button type="button" variant="destructive" onClick={onSubmit} disabled={isLoading} data-icon="inline-start">
-                  <Trash2 />
-                  Delete Project
+                <Button type="button" variant="destructive" onClick={() => void onDelete()} disabled={isLoading} data-icon="inline-start">
+                  {isLoading ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                  {isLoading ? "Deleting..." : "Delete Project"}
                 </Button>
               </>
             }

@@ -11,7 +11,8 @@ import {
 
 type EditorLayoutProps = {
   children: ReactNode;
-  projects: SidebarProject[];
+  ownedProjects: SidebarProject[];
+  sharedProjects: SidebarProject[];
   onCreateProject: () => void;
   onRenameProject: (project: SidebarProject) => void;
   onDeleteProject: (project: SidebarProject) => void;
@@ -19,7 +20,8 @@ type EditorLayoutProps = {
 
 export function EditorLayout({
   children,
-  projects,
+  ownedProjects,
+  sharedProjects,
   onCreateProject,
   onRenameProject,
   onDeleteProject,
@@ -43,7 +45,8 @@ export function EditorLayout({
       <ProjectSidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        projects={projects}
+        ownedProjects={ownedProjects}
+        sharedProjects={sharedProjects}
         onCreateProject={onCreateProject}
         onRenameProject={onRenameProject}
         onDeleteProject={onDeleteProject}

@@ -8,14 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export type SidebarProject = {
   id: string;
   name: string;
-  slug: string;
-  isOwned: boolean;
+  roomId: string;
 };
 
 type ProjectSidebarProps = {
   isOpen: boolean;
   onClose: () => void;
-  projects: SidebarProject[];
+  ownedProjects: SidebarProject[];
+  sharedProjects: SidebarProject[];
   onCreateProject: () => void;
   onRenameProject: (project: SidebarProject) => void;
   onDeleteProject: (project: SidebarProject) => void;
@@ -24,14 +24,12 @@ type ProjectSidebarProps = {
 export function ProjectSidebar({
   isOpen,
   onClose,
-  projects,
+  ownedProjects,
+  sharedProjects,
   onCreateProject,
   onRenameProject,
   onDeleteProject,
 }: ProjectSidebarProps) {
-  const myProjects = projects.filter((project) => project.isOwned);
-  const sharedProjects = projects.filter((project) => !project.isOwned);
-
   return (
     <aside
       className={`pointer-events-none fixed inset-y-0 left-0 z-40 w-80 p-4 pt-18 ${
@@ -60,9 +58,9 @@ export function ProjectSidebar({
             </TabsList>
 
             <TabsContent value="my-projects" className="mt-4">
-              {myProjects.length ? (
+              {ownedProjects.length ? (
                 <ul className="space-y-2">
-                  {myProjects.map((project) => (
+                  {ownedProjects.map((project) => (
                     <li
                       key={project.id}
                       className="rounded-lg border border-border bg-(--bg-subtle) p-2.5"
@@ -73,7 +71,7 @@ export function ProjectSidebar({
                             {project.name}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
-                            /{project.slug}
+                            /{project.roomId}
                           </p>
                         </div>
                         <Button
@@ -114,7 +112,7 @@ export function ProjectSidebar({
                         {project.name}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        /{project.slug}
+                        /{project.roomId}
                       </p>
                     </li>
                   ))}
