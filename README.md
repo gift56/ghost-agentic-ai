@@ -161,6 +161,7 @@ Create **`.env.local`** (and optionally **`.env`** for Prisma-only tools). Value
 
 ### Clerk
 
+
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | **Yes** | Clerk publishable key (browser). |
