@@ -7,6 +7,7 @@ import {
 } from "@liveblocks/react/suspense";
 import { Cursor } from "@liveblocks/react-ui";
 import { useStoreApi } from "@xyflow/react";
+import { Loader2 } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 
 function initialsFromName(name: string) {
@@ -37,13 +38,22 @@ function $coordinates(value: unknown): { x: number; y: number } | null {
 type CollaboratorCursorProps = { connectionId: number };
 
 function cursorSliceEqual(
-  a: { userId: string; cursor: { x: number; y: number } | null },
-  b: { userId: string; cursor: { x: number; y: number } | null },
+  a: {
+    userId: string;
+    cursor: { x: number; y: number } | null;
+    thinking: boolean;
+  },
+  b: {
+    userId: string;
+    cursor: { x: number; y: number } | null;
+    thinking: boolean;
+  },
 ) {
   return (
     a.userId === b.userId &&
     a.cursor?.x === b.cursor?.x &&
-    a.cursor?.y === b.cursor?.y
+    a.cursor?.y === b.cursor?.y &&
+    a.thinking === b.thinking
   );
 }
 
@@ -60,6 +70,7 @@ function CollaboratorCursor({ connectionId }: CollaboratorCursorProps) {
     (other) => ({
       userId: typeof other.id === "string" ? other.id : "",
       cursor: $coordinates(other.presence.cursor),
+      thinking: other.presence.thinking === true,
     }),
     cursorSliceEqual,
   );
@@ -106,7 +117,20 @@ function CollaboratorCursor({ connectionId }: CollaboratorCursorProps) {
       className="pointer-events-none"
       style={{ display: "none" }}
     >
-      <Cursor color={color} label={name} />
+      <Cursor
+        color={color}
+        label={
+          <span className="inline-flex max-w-56 items-center gap-1">
+            {presenceSlice.thinking ? (
+              <Loader2
+                className="size-3 shrink-0 animate-spin opacity-90"
+                aria-hidden
+              />
+            ) : null}
+            <span className="min-w-0 truncate">{name}</span>
+          </span>
+        }
+      />
     </div>
   );
 }

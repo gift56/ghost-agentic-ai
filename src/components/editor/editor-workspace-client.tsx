@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { EditorWorkspaceCanvas } from "@/components/editor/editor-workspace-canvas";
+import { EditorWorkspaceRoom } from "@/components/editor/editor-workspace-room";
 import { ProjectDialogs } from "@/components/editor/project-dialogs";
 import { ShareDialog } from "@/components/editor/share-dialog";
 import { EditorLayout } from "@/components/editor/editor-layout";
@@ -39,13 +40,15 @@ export function EditorWorkspaceClient({
   }, []);
 
   return (
-    <>
+    <EditorWorkspaceRoom roomId={roomId}>
       <EditorLayout
         ownedProjects={ownedProjects}
         sharedProjects={sharedProjects}
         activeRoomId={roomId}
         projectName={projectName}
         showWorkspaceActions
+        aiSidebarRoomId={roomId}
+        aiSidebarProjectId={roomId}
         onCreateProject={actions.openCreateDialog}
         onRenameProject={actions.openRenameDialog}
         onDeleteProject={actions.openDeleteDialog}
@@ -85,6 +88,6 @@ export function EditorWorkspaceClient({
         open={isShareDialogOpen}
         onOpenChange={setIsShareDialogOpen}
       />
-    </>
+    </EditorWorkspaceRoom>
   );
 }

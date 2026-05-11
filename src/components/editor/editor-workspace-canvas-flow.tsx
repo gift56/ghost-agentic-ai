@@ -29,6 +29,7 @@ import {
   useUndo,
 } from "@liveblocks/react/suspense";
 
+import { EditorCanvasAiActivity } from "@/components/editor/editor-canvas-ai-activity";
 import { EditorCanvasControlBar } from "@/components/editor/editor-canvas-control-bar";
 import { EditorCanvasLiveCursors } from "@/components/editor/editor-canvas-live-cursors";
 import { EditorCanvasPresenceAvatars } from "@/components/editor/editor-canvas-presence-avatars";
@@ -446,6 +447,7 @@ function EditorWorkspaceCanvasFlowInner({
                 color="rgb(63 63 70 / 0.45)"
               />
               <EditorCanvasLiveCursors />
+              <EditorCanvasAiActivity />
               <Panel
                 position="top-right"
                 className="z-10 m-0 mr-4! mt-4! p-0"

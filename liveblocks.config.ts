@@ -24,7 +24,12 @@ declare global {
       };
     };
 
-    RoomEvent: Record<string, never>;
+    RoomEvent: {
+      type: "ai:focus";
+      runId: string;
+      userId: string;
+      position: { x: number; y: number } | null;
+    };
 
     ThreadMetadata: Record<string, never>;
 

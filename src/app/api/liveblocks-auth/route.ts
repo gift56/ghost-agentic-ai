@@ -3,6 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 import { getLiveblocks, userIdToCursorColor } from "@/lib/liveblocks";
+import { AI_CHAT_FEED_ID, AI_STATUS_FEED_ID } from "@/types/tasks";
 import {
   getAccessibleProjectByRoomId,
   getCurrentProjectIdentity,
@@ -61,6 +62,17 @@ export async function POST(request: Request) {
     await liveblocks.getOrCreateRoom(roomRaw, {
       defaultAccesses: ["room:write"],
     });
+    try {
+      const { data: feeds } = await liveblocks.getFeeds({ roomId: roomRaw });
+      const existing = new Set(feeds.map((f) => f.feedId));
+      for (const feedId of [AI_STATUS_FEED_ID, AI_CHAT_FEED_ID]) {
+        if (!existing.has(feedId)) {
+          await liveblocks.createFeed({ roomId: roomRaw, feedId });
+        }
+      }
+    } catch {
+      // Feed provisioning is best-effort; room collaboration still works without it.
+    }
   } catch (error) {
     if (error instanceof LiveblocksError) {
       return NextResponse.json(

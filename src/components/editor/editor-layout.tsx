@@ -19,6 +19,8 @@ type EditorLayoutProps = {
   activeRoomId?: string | null;
   projectName?: string;
   showWorkspaceActions?: boolean;
+  aiSidebarRoomId?: string;
+  aiSidebarProjectId?: string;
   onCreateProject: () => void;
   onRenameProject: (project: SidebarProject) => void;
   onDeleteProject: (project: SidebarProject) => void;
@@ -37,6 +39,8 @@ export function EditorLayout({
   activeRoomId,
   projectName,
   showWorkspaceActions = false,
+  aiSidebarRoomId,
+  aiSidebarProjectId,
   onCreateProject,
   onRenameProject,
   onDeleteProject,
@@ -82,13 +86,17 @@ export function EditorLayout({
       <main className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1">{children}</div>
       </main>
-      {showWorkspaceActions ? (
+      {showWorkspaceActions && aiSidebarRoomId && aiSidebarProjectId ? (
         <Dialog open={isAiSidebarOpen} onOpenChange={setIsAiSidebarOpen}>
           <DialogContent
             showCloseButton={false}
             className="top-0 right-0 left-auto h-dvh w-full max-w-sm translate-x-0 translate-y-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 duration-200 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-right data-open:zoom-in-100 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-right data-closed:zoom-out-100"
           >
-            <EditorAiSidebar onClose={() => setIsAiSidebarOpen(false)} />
+            <EditorAiSidebar
+              roomId={aiSidebarRoomId}
+              projectId={aiSidebarProjectId}
+              onClose={() => setIsAiSidebarOpen(false)}
+            />
           </DialogContent>
         </Dialog>
       ) : null}
