@@ -1,3 +1,4 @@
+import { BlobNotFoundError, del } from "@vercel/blob";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
@@ -49,16 +50,43 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { projectId } = await context.params;
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { ownerId: true },
+    select: {
+      ownerId: true,
+      canvasJsonPath: true,
+      specs: { select: { filePath: true } },
+    },
   });
 
   if (!project || project.ownerId !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const blobUrls = new Set<string>();
+  const canvasUrl = project.canvasJsonPath?.trim() ?? "";
+  if (canvasUrl) blobUrls.add(canvasUrl);
+  for (const spec of project.specs) {
+    const path = spec.filePath?.trim() ?? "";
+    if (path) blobUrls.add(path);
+  }
+
   await prisma.project.delete({
     where: { id: projectId },
   });
+
+  await Promise.all(
+    [...blobUrls].map(async (url) => {
+      try {
+        await del(url);
+      } catch (error) {
+        if (error instanceof BlobNotFoundError) return;
+        console.error("[DELETE /api/projects/:projectId] blob delete failed", {
+          projectId,
+          url,
+          error,
+        });
+      }
+    }),
+  );
 
   return new NextResponse(null, { status: 204 });
 }
