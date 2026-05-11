@@ -9,6 +9,7 @@ import {
   useSelf,
   useUpdateMyPresence,
 } from "@liveblocks/react/suspense";
+import { useLiveblocksFlow } from "@liveblocks/react-flow";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import {
   AlertTriangle,
@@ -19,13 +20,27 @@ import {
   Send,
   X,
 } from "lucide-react";
+import ReactMarkdown, { type Components } from "react-markdown";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { designAgent } from "@/trigger/design-agent";
+import type { generateSpec } from "@/trigger/generate-spec";
+import {
+  canvasEdge,
+  canvasNode,
+  type CanvasEdge,
+  type CanvasNode,
+} from "@/types/canvas";
 import {
   AI_CHAT_FEED_ID,
   AI_STATUS_FEED_ID,
@@ -112,12 +127,216 @@ function formatChatTime(createdAt: number) {
   });
 }
 
+type ProjectSpecSummary = {
+  id: string;
+  createdAt: string;
+  filename: string;
+};
+
+function formatSpecTimestamp(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+async function fetchSpecMarkdown(
+  projectId: string,
+  specId: string,
+): Promise<string> {
+  const path = `/api/projects/${encodeURIComponent(projectId)}/specs/${encodeURIComponent(specId)}/download`;
+  const res = await fetch(path, { credentials: "same-origin" });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      detail.trim().length > 0
+        ? detail
+        : `Could not load spec (${res.status}).`,
+    );
+  }
+  return res.text();
+}
+
+const SPEC_MARKDOWN_COMPONENTS: Components = {
+  h1: ({ children }) => (
+    <h1 className="mt-4 text-base font-semibold text-primary-text first:mt-0">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="mt-3 text-sm font-semibold text-primary-text first:mt-0">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="mt-3 text-sm font-medium text-primary-text first:mt-0">
+      {children}
+    </h3>
+  ),
+  p: ({ children }) => (
+    <p className="mb-2 leading-relaxed text-primary-text last:mb-0">
+      {children}
+    </p>
+  ),
+  ul: ({ children }) => (
+    <ul className="mb-2 list-disc space-y-1 pl-4 text-primary-text last:mb-0">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="mb-2 list-decimal space-y-1 pl-4 text-primary-text last:mb-0">
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  a: ({ children, href }) => (
+    <a
+      href={href}
+      className="text-accent-text underline underline-offset-2 hover:text-primary-text"
+      target="_blank"
+      rel="noreferrer"
+    >
+      {children}
+    </a>
+  ),
+  code: ({ className, children, ...props }) => {
+    const inline = !className;
+    return inline ? (
+      <code
+        className="rounded bg-subtle px-1 py-0.5 font-mono text-[0.85em] text-accent-text"
+        {...props}
+      >
+        {children}
+      </code>
+    ) : (
+      <code
+        className={cn("font-mono text-[0.85em] text-primary-text", className)}
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => (
+    <pre className="mb-2 overflow-x-auto rounded-lg border border-surface-border bg-subtle p-3 text-xs text-primary-text last:mb-0">
+      {children}
+    </pre>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="mb-2 border-l-2 border-surface-border pl-3 text-muted-text last:mb-0">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="my-4 border-surface-border" />,
+  strong: ({ children }) => (
+    <strong className="font-semibold text-primary-text">{children}</strong>
+  ),
+};
+
+async function downloadSpecFile(
+  projectId: string,
+  spec: Pick<ProjectSpecSummary, "id" | "filename">,
+) {
+  const path = `/api/projects/${encodeURIComponent(projectId)}/specs/${encodeURIComponent(spec.id)}/download`;
+  const res = await fetch(path, { credentials: "same-origin" });
+  if (!res.ok) {
+    throw new Error(`Download failed (${res.status}).`);
+  }
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = spec.filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(href);
+}
+
+function canvasNodesToSpecPayload(nodes: CanvasNode[]) {
+  return nodes.map((n) => {
+    const width =
+      typeof n.width === "number" && Number.isFinite(n.width)
+        ? n.width
+        : undefined;
+    const height =
+      typeof n.height === "number" && Number.isFinite(n.height)
+        ? n.height
+        : undefined;
+    return {
+      id: n.id,
+      type: canvasNode,
+      position: { x: n.position.x, y: n.position.y },
+      data: {
+        label: typeof n.data.label === "string" ? n.data.label : "",
+        color: typeof n.data.color === "string" ? n.data.color : "",
+        shape: n.data.shape,
+        ...(n.data.foreground !== undefined
+          ? { foreground: n.data.foreground }
+          : {}),
+      },
+      ...(width !== undefined ? { width } : {}),
+      ...(height !== undefined ? { height } : {}),
+    };
+  });
+}
+
+function canvasEdgesToSpecPayload(edges: CanvasEdge[]) {
+  return edges.map((e) => ({
+    id: e.id,
+    ...(e.type === canvasEdge ? { type: canvasEdge } : {}),
+    source: e.source,
+    target: e.target,
+    ...(e.data?.label !== undefined && String(e.data.label).length > 0
+      ? { data: { label: String(e.data.label) } }
+      : {}),
+  }));
+}
+
+function completionMessageForSpecRun(run: {
+  status: string;
+  output?: unknown;
+  error?: unknown;
+}): string {
+  if (run.status === "COMPLETED") {
+    return "Architecture spec saved.";
+  }
+  const err =
+    typeof run.error === "object" &&
+    run.error !== null &&
+    "message" in run.error &&
+    typeof (run.error as { message?: unknown }).message === "string"
+      ? (run.error as { message: string }).message.trim()
+      : "";
+  return err.length > 0
+    ? err
+    : "Spec generation did not complete successfully.";
+}
+
 export function EditorAiSidebar({
   roomId,
   projectId,
   onClose,
 }: EditorAiSidebarProps) {
   const [draft, setDraft] = useState("");
+  const [sidebarTab, setSidebarTab] = useState<"architect" | "specs">(
+    "architect",
+  );
+  const [projectSpecs, setProjectSpecs] = useState<ProjectSpecSummary[]>([]);
+  const [specsLoading, setSpecsLoading] = useState(false);
+  const [specsError, setSpecsError] = useState<string | null>(null);
+  const [selectedSpecId, setSelectedSpecId] = useState<string | null>(null);
+  const [previewMarkdown, setPreviewMarkdown] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [specDownloadError, setSpecDownloadError] = useState<string | null>(
+    null,
+  );
+  const [specActiveRunId, setSpecActiveRunId] = useState<string | null>(null);
+  const [specAccessToken, setSpecAccessToken] = useState<string | null>(null);
+  const [specGenSubmitting, setSpecGenSubmitting] = useState(false);
+  const [specGenError, setSpecGenError] = useState<string | null>(null);
+  const previewRequestIdRef = useRef(0);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -132,9 +351,28 @@ export function EditorAiSidebar({
   const { messages: statusFeedMessages } = useFeedMessages(AI_STATUS_FEED_ID);
   const { messages: chatFeedMessages } = useFeedMessages(AI_CHAT_FEED_ID);
 
+  const {
+    nodes: liveNodes,
+    edges: liveEdges,
+    isLoading: canvasFlowLoading,
+  } = useLiveblocksFlow<CanvasNode, CanvasEdge>({
+    suspense: false,
+    nodes: { initial: [] },
+    edges: { initial: [] },
+  });
+
   const chatRows = useMemo(
     () => sortedValidAiChatMessages(chatFeedMessages),
     [chatFeedMessages],
+  );
+
+  const chatHistoryForSpec = useMemo(
+    () =>
+      chatRows.map((row) => ({
+        role: row.payload.role,
+        content: row.payload.content,
+      })),
+    [chatRows],
   );
 
   const latestFeedStatus = useMemo(
@@ -157,6 +395,88 @@ export function EditorAiSidebar({
       /* best-effort; server auth also provisions feeds */
     });
   }, [createFeed, roomId]);
+
+  const loadProjectSpecs = useCallback(async () => {
+    setSpecsError(null);
+    setSpecsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/projects/${encodeURIComponent(projectId)}/specs`,
+        { credentials: "same-origin" },
+      );
+      const json = (await res.json().catch(() => null)) as {
+        specs?: ProjectSpecSummary[];
+        error?: string;
+      } | null;
+      if (!res.ok) {
+        const msg =
+          typeof json?.error === "string" && json.error.trim().length > 0
+            ? json.error
+            : `Could not load specs (${res.status}).`;
+        throw new Error(msg);
+      }
+      setProjectSpecs(Array.isArray(json?.specs) ? json.specs : []);
+    } catch (e) {
+      setProjectSpecs([]);
+      setSpecsError(e instanceof Error ? e.message : "Could not load specs.");
+    } finally {
+      setSpecsLoading(false);
+    }
+  }, [projectId]);
+
+  const selectedSpec = useMemo(
+    () => projectSpecs.find((s) => s.id === selectedSpecId) ?? null,
+    [projectSpecs, selectedSpecId],
+  );
+
+  const openSpecPreview = useCallback(
+    (specId: string) => {
+      const requestId = ++previewRequestIdRef.current;
+      setSelectedSpecId(specId);
+      setPreviewMarkdown(null);
+      setPreviewError(null);
+      setPreviewLoading(true);
+      void (async () => {
+        try {
+          const md = await fetchSpecMarkdown(projectId, specId);
+          if (previewRequestIdRef.current !== requestId) return;
+          setPreviewMarkdown(md);
+        } catch (e) {
+          if (previewRequestIdRef.current !== requestId) return;
+          setPreviewError(
+            e instanceof Error ? e.message : "Could not load preview.",
+          );
+        } finally {
+          if (previewRequestIdRef.current === requestId) {
+            setPreviewLoading(false);
+          }
+        }
+      })();
+    },
+    [projectId],
+  );
+
+  const onSpecDownload = useCallback(
+    async (spec: Pick<ProjectSpecSummary, "id" | "filename">) => {
+      setSpecDownloadError(null);
+      try {
+        await downloadSpecFile(projectId, spec);
+      } catch (e) {
+        setSpecDownloadError(
+          e instanceof Error ? e.message : "Download failed.",
+        );
+      }
+    },
+    [projectId],
+  );
+
+  const closeSpecPreview = useCallback(() => {
+    previewRequestIdRef.current += 1;
+    setSelectedSpecId(null);
+    setPreviewMarkdown(null);
+    setPreviewError(null);
+    setPreviewLoading(false);
+  }, []);
 
   useEffect(() => {
     const el = scrollAreaRef.current?.querySelector(
@@ -208,6 +528,173 @@ export function EditorAiSidebar({
     enabled: Boolean(activeRunId && accessToken),
     onComplete: onDesignRunComplete,
   });
+
+  const onSpecRunComplete = useCallback(
+    (
+      completedRun: {
+        status: string;
+        output?: unknown;
+        error?: unknown;
+      },
+      completeErr?: Error,
+    ) => {
+      updateMyPresence({ thinking: false });
+      setSpecActiveRunId(null);
+      setSpecAccessToken(null);
+
+      const postAssistant = async (content: string) => {
+        const parsed = aiChatFeedPayloadSchema.safeParse({
+          sender: "Ghost AI",
+          role: "assistant" as const,
+          content,
+          timestamp: Date.now(),
+        });
+        if (!parsed.success) return;
+        try {
+          await createFeedMessage(AI_CHAT_FEED_ID, parsed.data);
+        } catch {
+          /* best-effort */
+        }
+      };
+
+      const postSystem = async (content: string) => {
+        const parsed = aiChatFeedPayloadSchema.safeParse({
+          sender: "Ghost AI",
+          role: "system" as const,
+          content,
+          timestamp: Date.now(),
+        });
+        if (!parsed.success) return;
+        try {
+          await createFeedMessage(AI_CHAT_FEED_ID, parsed.data);
+        } catch {
+          /* best-effort */
+        }
+      };
+
+      if (
+        completedRun.status === "COMPLETED" &&
+        (!completeErr || completeErr.message.trim().length === 0)
+      ) {
+        setSpecGenError(null);
+        void loadProjectSpecs();
+        void postAssistant("Architecture spec saved.");
+        return;
+      }
+
+      const msg =
+        completeErr?.message?.trim() ||
+        completionMessageForSpecRun({
+          status: completedRun.status,
+          output: completedRun.output,
+          error: completedRun.error,
+        });
+      setSpecGenError(msg);
+      void postSystem(`Spec generation failed: ${msg}`);
+    },
+    [createFeedMessage, loadProjectSpecs, updateMyPresence],
+  );
+
+  const { run: specRealtimeRun } = useRealtimeRun<typeof generateSpec>(
+    specActiveRunId ?? undefined,
+    {
+      accessToken: specAccessToken ?? undefined,
+      enabled: Boolean(specActiveRunId && specAccessToken),
+      onComplete: onSpecRunComplete,
+    },
+  );
+
+  const specRunBusy = useMemo(
+    () =>
+      Boolean(
+        specActiveRunId &&
+        specAccessToken &&
+        (!specRealtimeRun || !isTerminalRunStatus(specRealtimeRun.status)),
+      ),
+    [specAccessToken, specActiveRunId, specRealtimeRun],
+  );
+
+  const specRunStatusLabel = useMemo(() => {
+    if (!specRunBusy && !specGenSubmitting) return null;
+    const meta = specRealtimeRun?.metadata as
+      | { phase?: string; status?: string }
+      | undefined;
+    const phase =
+      typeof meta?.phase === "string" ? meta.phase.toLowerCase() : "";
+    if (phase === "generating") return "Generating spec…";
+    if (phase === "persisting") return "Saving spec…";
+    if (phase === "complete" || phase === "starting") return "Finishing…";
+    if (phase === "error") return "Spec run failed";
+    return specGenSubmitting ? "Starting…" : "Working…";
+  }, [specGenSubmitting, specRealtimeRun?.metadata, specRunBusy]);
+
+  const triggerGenerateSpec = useCallback(async () => {
+    setSpecGenError(null);
+    if (specGenSubmitting || canvasFlowLoading || specRunBusy) return;
+
+    const nodesPayload = canvasNodesToSpecPayload(liveNodes ?? []);
+    const edgesPayload = canvasEdgesToSpecPayload(liveEdges ?? []);
+
+    updateMyPresence({ thinking: true });
+    setSpecGenSubmitting(true);
+    try {
+      const triggerRes = await fetch("/api/ai/spec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          roomId,
+          chatHistory: chatHistoryForSpec,
+          nodes: nodesPayload,
+          edges: edgesPayload,
+        }),
+      });
+      const triggerJson = (await triggerRes.json().catch(() => null)) as {
+        runId?: string;
+        error?: string;
+      } | null;
+      if (!triggerRes.ok || !triggerJson?.runId) {
+        const detail =
+          typeof triggerJson?.error === "string" &&
+          triggerJson.error.trim().length > 0
+            ? triggerJson.error
+            : `Failed to start spec task (${triggerRes.status}).`;
+        throw new Error(detail);
+      }
+
+      const tokenRes = await fetch("/api/ai/spec/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ runId: triggerJson.runId }),
+      });
+      const tokenJson = (await tokenRes.json().catch(() => null)) as {
+        token?: string;
+      } | null;
+      if (!tokenRes.ok || !tokenJson?.token) {
+        throw new Error(`Failed to issue spec run token (${tokenRes.status}).`);
+      }
+
+      setSpecActiveRunId(triggerJson.runId);
+      setSpecAccessToken(tokenJson.token);
+    } catch (error) {
+      updateMyPresence({ thinking: false });
+      setSpecGenError(
+        error instanceof Error ? error.message : "Failed to generate spec.",
+      );
+    } finally {
+      setSpecGenSubmitting(false);
+    }
+  }, [
+    canvasFlowLoading,
+    chatHistoryForSpec,
+    liveEdges,
+    liveNodes,
+    roomId,
+    specGenSubmitting,
+    specRunBusy,
+    updateMyPresence,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -405,7 +892,7 @@ export function EditorAiSidebar({
   const stripIsError = latestFeedStatus?.phase === "error";
 
   return (
-    <div className="flex h-full flex-col border-surface-border bg-(--bg-base)/95 shadow-2xl ring-1 ring-foreground/10">
+    <div className="flex h-full max-w-full min-w-0 flex-col overflow-hidden border-surface-border bg-(--bg-base)/95 shadow-2xl ring-1 ring-foreground/10">
       <header className="flex shrink-0 items-start justify-between gap-3 border-b border-surface-border px-4 py-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-surface-border bg-subtle text-accent-text">
@@ -440,8 +927,13 @@ export function EditorAiSidebar({
       </header>
 
       <Tabs
-        defaultValue="architect"
-        className="flex min-h-0 flex-1 flex-col gap-0"
+        value={sidebarTab}
+        onValueChange={(next) => {
+          if (next !== "architect" && next !== "specs") return;
+          setSidebarTab(next);
+          if (next === "specs") void loadProjectSpecs();
+        }}
+        className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden"
       >
         <div className="shrink-0 overflow-hidden border-b border-surface-border px-4 pt-3 pb-3">
           <TabsList className="flex h-auto min-h-0 w-full max-w-full gap-2 rounded-xl bg-muted p-1">
@@ -640,44 +1132,172 @@ export function EditorAiSidebar({
           </div>
         </TabsContent>
 
-        <TabsContent value="specs" className="mt-0 flex flex-col gap-4 p-4">
+        <TabsContent
+          value="specs"
+          className="mt-0 flex min-h-0 min-w-0 max-w-full flex-1 flex-col gap-3 overflow-hidden p-4"
+        >
           <Button
             type="button"
-            className="w-full bg-accent text-white hover:bg-accent/90"
+            disabled={
+              canvasFlowLoading || specGenSubmitting || specRunBusy || isWorking
+            }
+            className={cn(
+              "w-full shrink-0 min-h-10 min-w-0 py-2 text-white",
+              "bg-primary hover:bg-primary/90",
+              "disabled:cursor-not-allowed disabled:opacity-60",
+            )}
+            onClick={() => void triggerGenerateSpec()}
           >
+            {specGenSubmitting || specRunBusy ? (
+              <Loader2
+                className="mr-2 inline size-4 animate-spin"
+                aria-hidden
+              />
+            ) : null}
             Generate Spec
           </Button>
 
-          <div className="rounded-xl border border-surface-border bg-elevated p-4">
-            <div className="flex gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-surface-border bg-subtle text-accent-text">
-                <FileText className="size-5" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <p className="font-medium text-primary-text">
-                  Sample project spec.md
+          {specGenError ? (
+            <p className="text-xs text-state-error">{specGenError}</p>
+          ) : null}
+
+          {specRunStatusLabel && !specGenError ? (
+            <p className="text-xs text-muted-text">{specRunStatusLabel}</p>
+          ) : null}
+
+          {canvasFlowLoading ? (
+            <p className="text-xs text-muted-text">
+              Connecting to collaborative canvas…
+            </p>
+          ) : null}
+
+          {specDownloadError ? (
+            <p className="text-xs text-state-error">{specDownloadError}</p>
+          ) : null}
+
+          <ScrollArea className="min-h-0 min-w-0 flex-1 overflow-hidden **:data-[slot=scroll-area-viewport]:min-w-0 **:data-[slot=scroll-area-viewport]:max-w-full **:data-[slot=scroll-area-viewport]:overflow-x-hidden">
+            <div className="flex min-w-0 max-w-full flex-col gap-2 pr-3 pb-1">
+              {specsLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-text">
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Loading specs…
+                </div>
+              ) : specsError ? (
+                <p className="py-6 text-center text-sm text-state-error">
+                  {specsError}
                 </p>
-                <p className="line-clamp-3 text-sm text-muted-text">
-                  # Architecture overview
-                  <br />
-                  Services communicate over async events with a shared schema
-                  registry. Demo content only.
+              ) : projectSpecs.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-text">
+                  No specs yet. Generate one to see it here.
                 </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled
-                  className="gap-1.5"
-                >
-                  <Download className="size-3.5" />
-                  Download
-                </Button>
-              </div>
+              ) : (
+                projectSpecs.map((spec) => (
+                  <div
+                    key={spec.id}
+                    className="flex min-w-0 max-w-full items-stretch gap-1 overflow-hidden rounded-xl border border-surface-border bg-elevated"
+                  >
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 flex-col gap-0.5 px-3 py-2.5 text-left overflow-hidden transition-colors hover:bg-subtle/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      onClick={() => openSpecPreview(spec.id)}
+                    >
+                      <span className="truncate text-sm font-medium text-primary-text">
+                        {spec.filename}
+                      </span>
+                      <span className="text-xs text-muted-text tabular-nums">
+                        {formatSpecTimestamp(spec.createdAt)}
+                      </span>
+                    </button>
+                    <div className="flex shrink-0 items-center border-l border-surface-border px-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-text hover:text-primary-text"
+                        aria-label={`Download ${spec.filename}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void onSpecDownload(spec);
+                        }}
+                      >
+                        <Download className="size-4" aria-hidden />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          </div>
+          </ScrollArea>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={selectedSpecId !== null}
+        onOpenChange={(open) => {
+          if (!open) closeSpecPreview();
+        }}
+      >
+        <DialogContent
+          className="top-1/2 left-1/2 grid max-h-[min(90vh,640px)] min-h-0 w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl border-surface-border bg-elevated p-0 sm:max-w-2xl"
+          showCloseButton
+        >
+          <DialogHeader className="shrink-0 border-b border-surface-border px-4 py-3 pr-12">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-2">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-surface-border bg-subtle text-accent-text">
+                  <FileText className="size-4" aria-hidden />
+                </div>
+                <div className="min-w-0">
+                  <DialogTitle className="truncate font-medium text-primary-text">
+                    {selectedSpec?.filename ?? "Spec preview"}
+                  </DialogTitle>
+                  {selectedSpec ? (
+                    <p className="mt-0.5 text-xs text-muted-text tabular-nums">
+                      {formatSpecTimestamp(selectedSpec.createdAt)}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5 border-surface-border flex items-center justify-center"
+                disabled={!selectedSpec}
+                onClick={() => {
+                  if (selectedSpec) void onSpecDownload(selectedSpec);
+                }}
+              >
+                <Download className="size-3.5" aria-hidden />
+                <span className="mt-1">Download</span>
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="min-h-0 overflow-hidden px-4 pb-4 pt-0">
+            <ScrollArea className="h-full min-h-0 **:data-[slot=scroll-area-viewport]:max-h-full **:data-[slot=scroll-area-viewport]]:min-h-0">
+              <div className="pr-3 py-3">
+                {previewLoading ? (
+                  <div className="flex items-center gap-2 py-12 text-sm text-muted-text">
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    Loading…
+                  </div>
+                ) : previewError ? (
+                  <p className="py-8 text-center text-sm text-state-error">
+                    {previewError}
+                  </p>
+                ) : previewMarkdown ? (
+                  <div className="text-sm **:wrap-break-word">
+                    <ReactMarkdown components={SPEC_MARKDOWN_COMPONENTS}>
+                      {previewMarkdown}
+                    </ReactMarkdown>
+                  </div>
+                ) : null}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

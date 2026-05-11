@@ -90,7 +90,7 @@ export function EditorLayout({
         <Dialog open={isAiSidebarOpen} onOpenChange={setIsAiSidebarOpen}>
           <DialogContent
             showCloseButton={false}
-            className="top-0 right-0 left-auto h-dvh w-full max-w-sm translate-x-0 translate-y-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 duration-200 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-right data-open:zoom-in-100 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-right data-closed:zoom-out-100"
+            className="top-0 right-0 left-auto h-dvh w-full max-w-sm min-w-0 translate-x-0 translate-y-0 gap-0 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 duration-200 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-right data-open:zoom-in-100 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-right data-closed:zoom-out-100"
           >
             <EditorAiSidebar
               roomId={aiSidebarRoomId}
